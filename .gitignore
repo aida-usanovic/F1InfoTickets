@@ -1,0 +1,19 @@
+# Visual Studio / .NET
+.vs/
+.vscode/
+bin/
+obj/
+*.user
+*.suo
+*.rsuser
+TestResults/
+
+# Images uploaded at runtime (seed images live in wwwroot/Images)
+F1Info&Tickets.WebAPI/wwwroot/uploads/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Flutter build output is submitted only as fit-build-*.zip (see README);
+# the Flutter project has its own .gitignore for the rest.

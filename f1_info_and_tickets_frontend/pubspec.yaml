@@ -1,0 +1,30 @@
+name: f1_info_and_tickets_frontend
+description: "F1 Info & Tickets: admin desktop app (Windows) and customer mobile app (Android)."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.6.0
+  provider: ^6.1.5
+  shared_preferences: ^2.5.5
+  intl: ^0.20.2
+  qr_flutter: ^4.1.0
+  file_selector: ^1.1.0
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  fl_chart: ^1.2.0
+  webview_flutter: ^4.14.1
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # Roboto (Apache 2.0) is embedded in PDF reports because it has the Bosnian letters.
+    - assets/fonts/
