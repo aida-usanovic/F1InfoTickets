@@ -47,7 +47,7 @@ In the mobile app: **Tickets** → pick a race → choose a ticket type and quan
 
 | Email | Password |
 | --- | --- |
-| `PAYPAL_BUYER_EMAIL` | `PAYPAL_BUYER_PASSWORD` |
+| `sb-v47m1b53353350@personal.example.com` | `TKWRs8<%` |
 
 After the payment the tickets (with QR codes) are in **Profile → My tickets**, a notification is created and a confirmation email is sent by the worker through RabbitMQ.
 
