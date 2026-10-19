@@ -89,9 +89,10 @@ class _SoldTicketsTabState extends State<_SoldTicketsTab> with AutomaticKeepAliv
           ...query,
           'RaceID': _raceId,
           'TicketTypeID': _ticketTypeId,
-          'PurchaseDateFrom': period?.start,
+          // Read the field, not the local copy: the table reloads before this widget rebuilds.
+          'PurchaseDateFrom': _period?.start,
           // The end date is inclusive.
-          'PurchaseDateTo': period?.end.add(const Duration(days: 1)),
+          'PurchaseDateTo': _period?.end.add(const Duration(days: 1)),
         },
       ),
       searchHint: 'Search by customer or race',

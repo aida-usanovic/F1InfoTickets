@@ -20,7 +20,7 @@ Requirements: Docker Desktop, plus an Android emulator (AVD) for the mobile app.
 
    This starts SQL Server, RabbitMQ, the Web API and the email worker. On first start the API applies the migrations and seeds the database. Configuration is in `.env`.
 
-2. Extract the builds from `fit-build-2026-10-14.zip` in the repository root (password: `fit`).
+2. Extract the builds from `fit-build-2026-10-19.zip` in the repository root (password: `fit`).
    - **Windows**: run `f1_info_and_tickets_frontend/build/windows/x64/runner/Release/f1_info_and_tickets_frontend.exe` (API on `http://localhost:5174`).
    - **Android**: drag `f1_info_and_tickets_frontend/build/app/outputs/flutter-apk/app-release.apk` onto the AVD to install it (API on `http://10.0.2.2:5174`).
 

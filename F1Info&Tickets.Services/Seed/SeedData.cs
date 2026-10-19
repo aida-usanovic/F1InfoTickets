@@ -24,7 +24,10 @@ namespace F1Info_Tickets.Services.Seed
             await EnsureUserRoleAsync(context, mobile.UserID, UserRoleId);
 
             if (await context.Continents.AnyAsync())
+            {
+                await AddMissingWorldCountriesAsync(context);
                 return;
+            }
 
             var random = new Random(2025);
             var reference = await SeedReferenceDataAsync(context);
@@ -37,6 +40,26 @@ namespace F1Info_Tickets.Services.Seed
             await SeedTicketCategoriesAsync(context, races, reference);
             var customers = await SeedCustomersAsync(context, hasher, mobile);
             await SeedCustomerActivityAsync(context, customers, races, drivers, teams, random);
+        }
+
+        // Databases seeded before the full country list only had the countries used by races and teams.
+        // Runs once: after that the admin manages countries, so deleted ones are not re-added.
+        private static async Task AddMissingWorldCountriesAsync(ApplicationDbContext context)
+        {
+            if (await context.Countries.CountAsync() >= 100)
+                return;
+
+            var codes = (await context.Countries.Select(c => c.Code).ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var names = (await context.Countries.Select(c => c.Name).ToListAsync()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var continents = await context.Continents.ToDictionaryAsync(c => c.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (code, name, continent) in WorldCountries.All)
+            {
+                if (codes.Contains(code) || names.Contains(name) || !continents.TryGetValue(continent, out var c))
+                    continue;
+                context.Countries.Add(new Country { Code = code, Name = name, Continent = c });
+            }
+            await context.SaveChangesAsync();
         }
 
         private record ReferenceData(
@@ -53,23 +76,7 @@ namespace F1Info_Tickets.Services.Seed
                 .ToDictionary(n => n, n => new Continent { Name = n });
             context.Continents.AddRange(continents.Values);
 
-            var countryData = new (string Code, string Name, string Continent)[]
-            {
-                ("GBR", "United Kingdom", "Europe"), ("ITA", "Italy", "Europe"), ("MCO", "Monaco", "Europe"),
-                ("ESP", "Spain", "Europe"), ("AUT", "Austria", "Europe"), ("HUN", "Hungary", "Europe"),
-                ("BEL", "Belgium", "Europe"), ("NLD", "Netherlands", "Europe"), ("DEU", "Germany", "Europe"),
-                ("FRA", "France", "Europe"), ("CHE", "Switzerland", "Europe"), ("FIN", "Finland", "Europe"),
-                ("BIH", "Bosnia and Herzegovina", "Europe"),
-                ("BHR", "Bahrain", "Asia"), ("SAU", "Saudi Arabia", "Asia"), ("JPN", "Japan", "Asia"),
-                ("CHN", "China", "Asia"), ("SGP", "Singapore", "Asia"), ("QAT", "Qatar", "Asia"),
-                ("ARE", "United Arab Emirates", "Asia"), ("THA", "Thailand", "Asia"), ("AZE", "Azerbaijan", "Asia"),
-                ("USA", "United States", "North America"), ("CAN", "Canada", "North America"),
-                ("MEX", "Mexico", "North America"),
-                ("BRA", "Brazil", "South America"), ("ARG", "Argentina", "South America"),
-                ("AUS", "Australia", "Oceania"), ("NZL", "New Zealand", "Oceania"),
-                ("ZAF", "South Africa", "Africa")
-            };
-            var countries = countryData.ToDictionary(c => c.Code, c => new Country { Code = c.Code, Name = c.Name, Continent = continents[c.Continent] });
+            var countries = WorldCountries.All.ToDictionary(c => c.Code, c => new Country { Code = c.Code, Name = c.Name, Continent = continents[c.Continent] });
             context.Countries.AddRange(countries.Values);
 
             var cityData = new (string Name, string Country)[]

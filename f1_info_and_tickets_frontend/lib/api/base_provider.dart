@@ -16,10 +16,15 @@ abstract class BaseProvider<T> {
     return PagedResult.fromJson(json, fromJson);
   }
 
-  /// All records for dropdowns (reference data is small).
+  /// All records for dropdowns; reads every page because the API returns at most 100 items per page.
   Future<List<T>> getAll({Map<String, dynamic>? filter}) async {
-    final result = await get(filter: {...?filter, 'Page': 1, 'PageSize': 100});
-    return result.items;
+    const pageSize = 100;
+    final items = <T>[];
+    for (var page = 1; ; page++) {
+      final result = await get(filter: {...?filter, 'Page': page, 'PageSize': pageSize});
+      items.addAll(result.items);
+      if (result.items.length < pageSize || items.length >= result.totalCount) return items;
+    }
   }
 
   Future<T> getById(int id) async => fromJson(await api.get('$endpoint/$id'));
