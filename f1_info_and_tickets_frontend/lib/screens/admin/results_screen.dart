@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/providers.dart';
+import '../../core/paged_result.dart';
 import '../../core/api_exception.dart';
 import '../../core/formatters.dart';
 import '../../core/validators.dart';
@@ -98,7 +99,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
     });
     try {
       final seasonId = _races!.firstWhere((r) => r.raceID == raceId).seasonID;
-      final results = await Future.wait([_results.getRaceResults(raceId), DriverProvider().getBySeason(seasonId)]);
+      final results = await Future.wait([
+        _results.getRaceResults(raceId),
+        fetchAllPages((page) => DriverProvider().getBySeason(seasonId, page: page)),
+      ]);
       if (!mounted || _raceId != raceId) return;
       _applyResults(results[0] as RaceResults, drivers: results[1] as List<Driver>);
     } catch (e) {

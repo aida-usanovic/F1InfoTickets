@@ -66,21 +66,21 @@ namespace F1Info_Tickets.Services.Services
                 entity.PhotoUrl = await FileHelper.SaveImageAsync(request.Image, "drivers");
         }
 
-        public async Task<List<DriverResponse>> GetActiveDriversBySeason(int seasonId)
+        public async Task<PagedResult<DriverResponse>> GetActiveDriversBySeason(int seasonId, PageRequest paging)
         {
             var drivers = await _context.Drivers
                 .Include(d => d.Country)
                 .Include(d => d.TeamDrivers.Where(td => td.SeasonID == seasonId)).ThenInclude(td => td.Team)
                 .Where(d => d.TeamDrivers.Any(td => td.SeasonID == seasonId))
-                .OrderBy(d => d.LastName)
-                .ToListAsync();
+                .OrderBy(d => d.LastName).ThenBy(d => d.DriverID)
+                .ToPagedResultAsync(paging);
 
-            return drivers.Select(d =>
+            return drivers.MapItems(items => items.Select(d =>
             {
                 var response = _mapper.Map<DriverResponse>(d);
                 response.TeamName = d.TeamDrivers.FirstOrDefault()?.Team.TeamName;
                 return response;
-            }).ToList();
+            }).ToList());
         }
 
         public async Task<DriverStatsResponse> GetStatsAsync(int driverId)
@@ -135,15 +135,15 @@ namespace F1Info_Tickets.Services.Services
             return teamDriver?.TeamID;
         }
 
-        public async Task<List<DriverResponse>> GetDriversByTeamAndSeason(int teamId, int seasonId)
+        public async Task<PagedResult<DriverResponse>> GetDriversByTeamAndSeason(int teamId, int seasonId, PageRequest paging)
         {
             var drivers = await _context.Drivers
                 .Include(d => d.Country)
                 .Where(d => d.TeamDrivers.Any(td => td.TeamID == teamId && td.SeasonID == seasonId))
-                .OrderBy(d => d.IsReserveDriver).ThenBy(d => d.LastName)
-                .ToListAsync();
+                .OrderBy(d => d.IsReserveDriver).ThenBy(d => d.LastName).ThenBy(d => d.DriverID)
+                .ToPagedResultAsync(paging);
 
-            return _mapper.Map<List<DriverResponse>>(drivers);
+            return drivers.MapItems(_mapper.Map<List<DriverResponse>>);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace F1Info_Tickets.Services.Interfaces
     {
         Task<RaceResultsResponse> GetRaceResultsAsync(int raceId);
         Task<RaceResultsResponse> SaveRaceResultsAsync(int raceId, RaceResultsSaveRequest request);
-        Task<List<DriverStandingResponse>> GetDriverStandingsBySeason(int seasonId);
-        Task<List<TeamStandingResponse>> GetTeamStandingsAsync(int seasonId);
+        Task<PagedResult<DriverStandingResponse>> GetDriverStandingsBySeason(int seasonId, BaseSearchObject search);
+        Task<PagedResult<TeamStandingResponse>> GetTeamStandingsAsync(int seasonId, BaseSearchObject search);
     }
 }

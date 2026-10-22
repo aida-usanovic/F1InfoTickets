@@ -83,11 +83,11 @@ class DriverProvider extends BaseProvider<Driver> {
 
   Future<DriverStats> getStats(int id) async => DriverStats.fromJson(await api.get('$endpoint/$id/stats'));
 
-  Future<List<Driver>> getBySeason(int seasonId) async =>
-      (await api.get('$endpoint/season/$seasonId') as List).map((e) => fromJson(e)).toList();
+  Future<PagedResult<Driver>> getBySeason(int seasonId, {int page = 1, int pageSize = 100}) async =>
+      PagedResult.fromJson(await api.get('$endpoint/season/$seasonId', query: {'Page': page, 'PageSize': pageSize}), fromJson);
 
-  Future<List<Driver>> getByTeamAndSeason(int teamId, int seasonId) async =>
-      (await api.get('$endpoint/team/$teamId/season/$seasonId') as List).map((e) => fromJson(e)).toList();
+  Future<PagedResult<Driver>> getByTeamAndSeason(int teamId, int seasonId, {int page = 1, int pageSize = 100}) async =>
+      PagedResult.fromJson(await api.get('$endpoint/team/$teamId/season/$seasonId', query: {'Page': page, 'PageSize': pageSize}), fromJson);
 }
 
 class TeamProvider extends BaseProvider<Team> {
@@ -111,7 +111,8 @@ class RaceProvider extends BaseProvider<Race> {
   @override
   Race fromJson(Map<String, dynamic> json) => Race.fromJson(json);
 
-  Future<List<Race>> getUpcoming() async => (await api.get('$endpoint/upcoming') as List).map((e) => fromJson(e)).toList();
+  Future<PagedResult<Race>> getUpcoming({int page = 1, int pageSize = 10}) async =>
+      PagedResult.fromJson(await api.get('$endpoint/upcoming', query: {'Page': page, 'PageSize': pageSize}), fromJson);
 
   /// Logged when a customer opens race details; used by the recommender.
   Future<void> recordView(int raceId) => api.post('$endpoint/$raceId/view');
@@ -146,21 +147,32 @@ class ResultProvider {
   Future<RaceResults> saveRaceResults(int raceId, List<Map<String, dynamic>> results) async =>
       RaceResults.fromJson(await _api.put('Result/race/$raceId', body: {'results': results}));
 
-  Future<List<DriverStanding>> getDriverStandings(int seasonId) async =>
-      (await _api.get('Result/driver-standings/$seasonId') as List).map((e) => DriverStanding.fromJson(e)).toList();
+  /// [search] filters by driver or team name on the server; positions are always the season positions.
+  Future<PagedResult<DriverStanding>> getDriverStandings(int seasonId, {int page = 1, int pageSize = 10, String? search}) async =>
+      PagedResult.fromJson(
+        await _api.get('Result/driver-standings/$seasonId', query: {'Page': page, 'PageSize': pageSize, 'SearchTerm': search}),
+        DriverStanding.fromJson,
+      );
 
-  Future<List<TeamStanding>> getTeamStandings(int seasonId) async =>
-      (await _api.get('Result/team-standings/$seasonId') as List).map((e) => TeamStanding.fromJson(e)).toList();
+  Future<PagedResult<TeamStanding>> getTeamStandings(int seasonId, {int page = 1, int pageSize = 10, String? search}) async =>
+      PagedResult.fromJson(
+        await _api.get('Result/team-standings/$seasonId', query: {'Page': page, 'PageSize': pageSize, 'SearchTerm': search}),
+        TeamStanding.fromJson,
+      );
 }
 
 class FavoriteProvider {
   final _api = BaseApi.api;
 
-  Future<List<Driver>> getDrivers() async => (await _api.get('Favorite/drivers') as List).map((e) => Driver.fromJson(e)).toList();
+  Future<PagedResult<Driver>> getDrivers({int page = 1, int pageSize = 10}) async =>
+      PagedResult.fromJson(await _api.get('Favorite/drivers', query: {'Page': page, 'PageSize': pageSize}), Driver.fromJson);
+  Future<bool> isFavoriteDriver(int id) async => (await _api.get('Favorite/drivers/$id'))['isFavorite'] as bool;
   Future<void> addDriver(int id) => _api.post('Favorite/drivers/$id');
   Future<void> removeDriver(int id) => _api.delete('Favorite/drivers/$id');
 
-  Future<List<Team>> getTeams() async => (await _api.get('Favorite/teams') as List).map((e) => Team.fromJson(e)).toList();
+  Future<PagedResult<Team>> getTeams({int page = 1, int pageSize = 10}) async =>
+      PagedResult.fromJson(await _api.get('Favorite/teams', query: {'Page': page, 'PageSize': pageSize}), Team.fromJson);
+  Future<bool> isFavoriteTeam(int id) async => (await _api.get('Favorite/teams/$id'))['isFavorite'] as bool;
   Future<void> addTeam(int id) => _api.post('Favorite/teams/$id');
   Future<void> removeTeam(int id) => _api.delete('Favorite/teams/$id');
 }

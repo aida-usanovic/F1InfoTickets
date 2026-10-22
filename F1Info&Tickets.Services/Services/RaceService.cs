@@ -100,22 +100,22 @@ namespace F1Info_Tickets.Services.Services
             foreach (var race in races) race.HasResults = withResults.Contains(race.RaceID);
         }
 
-        public async Task<List<RaceResponse>> GetRacesBySeason(int seasonId)
+        public async Task<PagedResult<RaceResponse>> GetRacesBySeason(int seasonId, PageRequest paging)
         {
             var races = await _context.Races.IncludeRaceDetails()
                 .Where(r => r.SeasonID == seasonId)
-                .OrderBy(r => r.Date)
-                .ToListAsync();
-            return _mapper.Map<List<RaceResponse>>(races);
+                .OrderBy(r => r.Date).ThenBy(r => r.RaceID)
+                .ToPagedResultAsync(paging);
+            return races.MapItems(_mapper.Map<List<RaceResponse>>);
         }
 
-        public async Task<List<RaceResponse>> GetUpcomingRaces()
+        public async Task<PagedResult<RaceResponse>> GetUpcomingRaces(PageRequest paging)
         {
             var races = await _context.Races.IncludeRaceDetails()
                 .Where(r => r.Date > DateTime.UtcNow)
-                .OrderBy(r => r.Date)
-                .ToListAsync();
-            return _mapper.Map<List<RaceResponse>>(races);
+                .OrderBy(r => r.Date).ThenBy(r => r.RaceID)
+                .ToPagedResultAsync(paging);
+            return races.MapItems(_mapper.Map<List<RaceResponse>>);
         }
 
         public async Task RecordViewAsync(int userId, int raceId)

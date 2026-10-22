@@ -37,10 +37,10 @@ class _TeamDetailsScreenState extends State<TeamDetailsScreen> {
 
   Future<void> _loadFavorite() async {
     try {
-      final favorites = await _favorites.getTeams();
-      if (mounted) setState(() => _isFavorite = favorites.any((t) => t.teamID == widget.teamId));
+      final isFavorite = await _favorites.isFavoriteTeam(widget.teamId);
+      if (mounted) setState(() => _isFavorite = isFavorite);
     } catch (_) {
-      // Without the favourites list the heart button is simply hidden.
+      // Without the favourite status the heart button is simply hidden.
     }
   }
 

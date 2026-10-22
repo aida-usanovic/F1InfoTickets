@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../api/providers.dart';
+import '../../core/paged_result.dart';
 import '../../core/validators.dart';
 import '../../models/driver.dart';
 import '../../models/reference.dart';
@@ -221,7 +222,7 @@ class _TeamLineupDialogState extends State<TeamLineupDialog> {
       _driverToAdd = null;
     });
     try {
-      final lineup = await _drivers.getByTeamAndSeason(widget.team.teamID, _seasonId!);
+      final lineup = await fetchAllPages((page) => _drivers.getByTeamAndSeason(widget.team.teamID, _seasonId!, page: page));
       if (mounted) setState(() => _lineup = lineup);
     } catch (e) {
       if (mounted) setState(() => _error = e);

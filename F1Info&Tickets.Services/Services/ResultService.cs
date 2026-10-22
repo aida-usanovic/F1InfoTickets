@@ -172,9 +172,10 @@ namespace F1Info_Tickets.Services.Services
             return (true, FormattableString.Invariant($"Results can be changed until {race.Date.Add(EditWindow):d MMM yyyy, HH:mm} (UTC)."));
         }
 
-        public async Task<List<DriverStandingResponse>> GetDriverStandingsBySeason(int seasonId)
+        // Positions come from the whole season; the search and paging only choose which rows are returned.
+        public async Task<PagedResult<DriverStandingResponse>> GetDriverStandingsBySeason(int seasonId, BaseSearchObject search)
         {
-            return await _context.Results
+            var standings = await _context.Results
                 .Where(r => r.Race.SeasonID == seasonId)
                 .GroupBy(r => new
                 {
@@ -197,12 +198,21 @@ namespace F1Info_Tickets.Services.Services
                 })
                 .OrderByDescending(x => x.TotalPoints)
                 .ThenBy(x => x.BestFinish)
+                .ThenBy(x => x.DriverName)
                 .ToListAsync();
+
+            for (var i = 0; i < standings.Count; i++) standings[i].Position = i + 1;
+            var term = search.SearchTerm?.Trim();
+            return (string.IsNullOrEmpty(term)
+                    ? standings
+                    : standings.Where(s => s.DriverName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                        || s.TeamName.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList())
+                .ToPagedResult(search);
         }
 
-        public async Task<List<TeamStandingResponse>> GetTeamStandingsAsync(int seasonId)
+        public async Task<PagedResult<TeamStandingResponse>> GetTeamStandingsAsync(int seasonId, BaseSearchObject search)
         {
-            return await _context.Results
+            var standings = await _context.Results
                 .Where(r => r.Race.SeasonID == seasonId)
                 .GroupBy(r => new
                 {
@@ -219,7 +229,15 @@ namespace F1Info_Tickets.Services.Services
                     DriversCount = g.Select(x => x.DriverID).Distinct().Count()
                 })
                 .OrderByDescending(x => x.TotalPoints)
+                .ThenBy(x => x.TeamName)
                 .ToListAsync();
+
+            for (var i = 0; i < standings.Count; i++) standings[i].Position = i + 1;
+            var term = search.SearchTerm?.Trim();
+            return (string.IsNullOrEmpty(term)
+                    ? standings
+                    : standings.Where(s => s.TeamName.Contains(term, StringComparison.OrdinalIgnoreCase)).ToList())
+                .ToPagedResult(search);
         }
     }
 }

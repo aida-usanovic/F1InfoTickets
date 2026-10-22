@@ -33,15 +33,15 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("driver-standings/{seasonId}")]
-        public async Task<ActionResult<List<DriverStandingResponse>>> GetDriverStandings(int seasonId)
+        public async Task<ActionResult<PagedResult<DriverStandingResponse>>> GetDriverStandings(int seasonId, [FromQuery] BaseSearchObject search)
         {
-            return Ok(await _resultService.GetDriverStandingsBySeason(seasonId));
+            return Ok(await _resultService.GetDriverStandingsBySeason(seasonId, search));
         }
 
         [HttpGet("team-standings/{seasonId}")]
-        public async Task<ActionResult<List<TeamStandingResponse>>> GetTeamStandings(int seasonId)
+        public async Task<ActionResult<PagedResult<TeamStandingResponse>>> GetTeamStandings(int seasonId, [FromQuery] BaseSearchObject search)
         {
-            return Ok(await _resultService.GetTeamStandingsAsync(seasonId));
+            return Ok(await _resultService.GetTeamStandingsAsync(seasonId, search));
         }
     }
 }

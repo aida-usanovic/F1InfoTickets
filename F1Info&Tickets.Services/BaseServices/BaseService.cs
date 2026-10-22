@@ -1,6 +1,7 @@
 ﻿using F1Info_Tickets.Model.Responses;
 using F1Info_Tickets.Model.SearchObjects;
 using F1Info_Tickets.Services.BaseInterfaces;
+using F1Info_Tickets.Services.Helpers;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -47,16 +48,7 @@ namespace F1Info_Tickets.Services.BaseServices
 
             var totalCount = await query.CountAsync();
 
-            int page = 1;
-            int pageSize = 10;
-            const int maxPageSize = 100;
-
-            if (search is BaseSearchObject baseSearch)
-            {
-                page = baseSearch.Page > 0 ? baseSearch.Page : 1;
-                pageSize = baseSearch.PageSize > 0 ? baseSearch.PageSize : 10;
-                pageSize = Math.Min(pageSize, maxPageSize);
-            }
+            var (page, pageSize) = search is PageRequest paging ? Paging.Normalize(paging) : (1, 10);
 
             var items = await ApplyOrder(query, search)
                 .Skip((page - 1) * pageSize)

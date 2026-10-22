@@ -68,6 +68,7 @@ class RaceResults {
 }
 
 class DriverStanding {
+  final int position;
   final int driverID;
   final String driverName;
   final String? photoUrl;
@@ -77,6 +78,7 @@ class DriverStanding {
   final int bestFinish;
 
   DriverStanding({
+    required this.position,
     required this.driverID,
     required this.driverName,
     this.photoUrl,
@@ -87,6 +89,7 @@ class DriverStanding {
   });
 
   factory DriverStanding.fromJson(Map<String, dynamic> json) => DriverStanding(
+    position: json['position'],
     driverID: json['driverID'],
     driverName: json['driverName'],
     photoUrl: json['photoUrl'],
@@ -98,15 +101,24 @@ class DriverStanding {
 }
 
 class TeamStanding {
+  final int position;
   final int teamID;
   final String teamName;
   final String? logoUrl;
   final double totalPoints;
   final int driversCount;
 
-  TeamStanding({required this.teamID, required this.teamName, this.logoUrl, required this.totalPoints, required this.driversCount});
+  TeamStanding({
+    required this.position,
+    required this.teamID,
+    required this.teamName,
+    this.logoUrl,
+    required this.totalPoints,
+    required this.driversCount,
+  });
 
   factory TeamStanding.fromJson(Map<String, dynamic> json) => TeamStanding(
+    position: json['position'],
     teamID: json['teamID'],
     teamName: json['teamName'],
     logoUrl: json['logoUrl'],

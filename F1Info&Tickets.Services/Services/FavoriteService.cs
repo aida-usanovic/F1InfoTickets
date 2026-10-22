@@ -1,6 +1,8 @@
 ﻿using F1Info_Tickets.Model.Responses;
+using F1Info_Tickets.Model.SearchObjects;
 using F1Info_Tickets.Services.Database;
 using F1Info_Tickets.Services.Exceptions;
+using F1Info_Tickets.Services.Helpers;
 using F1Info_Tickets.Services.Interfaces;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
@@ -18,15 +20,18 @@ namespace F1Info_Tickets.Services.Services
             _mapper = mapper;
         }
 
-        public async Task<List<DriverResponse>> GetDriversAsync(int userId)
+        public async Task<PagedResult<DriverResponse>> GetDriversAsync(int userId, PageRequest paging)
         {
             var drivers = await _context.Drivers
                 .Include(d => d.Country)
                 .Where(d => _context.FavoriteDrivers.Any(f => f.UserID == userId && f.DriverID == d.DriverID))
-                .OrderBy(d => d.LastName)
-                .ToListAsync();
-            return _mapper.Map<List<DriverResponse>>(drivers);
+                .OrderBy(d => d.LastName).ThenBy(d => d.DriverID)
+                .ToPagedResultAsync(paging);
+            return drivers.MapItems(_mapper.Map<List<DriverResponse>>);
         }
+
+        public Task<bool> IsFavoriteDriverAsync(int userId, int driverId) =>
+            _context.FavoriteDrivers.AnyAsync(f => f.UserID == userId && f.DriverID == driverId);
 
         public async Task AddDriverAsync(int userId, int driverId)
         {
@@ -47,15 +52,18 @@ namespace F1Info_Tickets.Services.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<List<TeamResponse>> GetTeamsAsync(int userId)
+        public async Task<PagedResult<TeamResponse>> GetTeamsAsync(int userId, PageRequest paging)
         {
             var teams = await _context.Teams
                 .Include(t => t.BaseCity).ThenInclude(c => c.Country)
                 .Where(t => _context.FavoriteTeams.Any(f => f.UserID == userId && f.TeamID == t.TeamID))
-                .OrderBy(t => t.TeamName)
-                .ToListAsync();
-            return _mapper.Map<List<TeamResponse>>(teams);
+                .OrderBy(t => t.TeamName).ThenBy(t => t.TeamID)
+                .ToPagedResultAsync(paging);
+            return teams.MapItems(_mapper.Map<List<TeamResponse>>);
         }
+
+        public Task<bool> IsFavoriteTeamAsync(int userId, int teamId) =>
+            _context.FavoriteTeams.AnyAsync(f => f.UserID == userId && f.TeamID == teamId);
 
         public async Task AddTeamAsync(int userId, int teamId)
         {

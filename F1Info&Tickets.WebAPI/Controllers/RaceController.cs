@@ -17,9 +17,9 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("season/{seasonId}")]
-        public async Task<ActionResult<List<RaceResponse>>> GetRacesBySeason(int seasonId)
+        public async Task<ActionResult<PagedResult<RaceResponse>>> GetRacesBySeason(int seasonId, [FromQuery] PageRequest paging)
         {
-            var result = await _raceService.GetRacesBySeason(seasonId);
+            var result = await _raceService.GetRacesBySeason(seasonId, paging);
             return Ok(result);
         }
 
@@ -33,9 +33,9 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("upcoming")]
-        public async Task<ActionResult<List<RaceResponse>>> GetUpcomingRaces()
+        public async Task<ActionResult<PagedResult<RaceResponse>>> GetUpcomingRaces([FromQuery] PageRequest paging)
         {
-            var result = await _raceService.GetUpcomingRaces();
+            var result = await _raceService.GetUpcomingRaces(paging);
             return Ok(result);
         }
     }

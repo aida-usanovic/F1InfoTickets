@@ -43,9 +43,9 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("season/{seasonId}")]
-        public async Task<ActionResult<List<DriverResponse>>> GetActiveDriversBySeason(int seasonId)
+        public async Task<ActionResult<PagedResult<DriverResponse>>> GetActiveDriversBySeason(int seasonId, [FromQuery] PageRequest paging)
         {
-            var result = await _driverService.GetActiveDriversBySeason(seasonId);
+            var result = await _driverService.GetActiveDriversBySeason(seasonId, paging);
             return Ok(result);
         }
 
@@ -58,9 +58,9 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("team/{teamId}/season/{seasonId}")]
-        public async Task<ActionResult<List<DriverResponse>>> GetDriversByTeamAndSeason(int teamId, int seasonId)
+        public async Task<ActionResult<PagedResult<DriverResponse>>> GetDriversByTeamAndSeason(int teamId, int seasonId, [FromQuery] PageRequest paging)
         {
-            var result = await _driverService.GetDriversByTeamAndSeason(teamId, seasonId);
+            var result = await _driverService.GetDriversByTeamAndSeason(teamId, seasonId, paging);
             return Ok(result);
         }
     }

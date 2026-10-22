@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace F1Info_Tickets.Model.SearchObjects
 {
-    public class BaseSearchObject
+    public class BaseSearchObject : PageRequest
     {
         public string? SearchTerm { get; set; }
-        public int Page { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
     }
 }

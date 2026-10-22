@@ -42,11 +42,12 @@ class _HomeTabState extends State<HomeTab> {
 
   Future<_HomeData> _load() async {
     final races = RaceProvider();
-    final upcoming = await races.getUpcoming();
+    final upcoming = (await races.getUpcoming(pageSize: 1)).items;
     final season = await SeasonProvider().getCurrent();
     final results = ResultProvider();
-    final drivers = season == null ? <DriverStanding>[] : await results.getDriverStandings(season.seasonID);
-    final teams = season == null ? <TeamStanding>[] : await results.getTeamStandings(season.seasonID);
+    // The slideshow shows the top 10 drivers and teams; the podium uses the first three drivers.
+    final drivers = season == null ? <DriverStanding>[] : (await results.getDriverStandings(season.seasonID)).items;
+    final teams = season == null ? <TeamStanding>[] : (await results.getTeamStandings(season.seasonID)).items;
     final recommended = await races.getRecommendations();
     return _HomeData(upcoming.firstOrNull, season, drivers, teams, recommended);
   }

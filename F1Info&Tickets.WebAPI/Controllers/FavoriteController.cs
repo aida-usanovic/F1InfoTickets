@@ -1,4 +1,5 @@
 ﻿using F1Info_Tickets.Model.Responses;
+using F1Info_Tickets.Model.SearchObjects;
 using F1Info_Tickets.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,16 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("drivers")]
-        public async Task<ActionResult<List<DriverResponse>>> GetDrivers()
+        public async Task<ActionResult<PagedResult<DriverResponse>>> GetDrivers([FromQuery] PageRequest paging)
         {
-            return Ok(await _favoriteService.GetDriversAsync(GetCurrentUserId()));
+            return Ok(await _favoriteService.GetDriversAsync(GetCurrentUserId(), paging));
+        }
+
+        // Whether one driver is a favourite (the driver page needs only this, not the whole list).
+        [HttpGet("drivers/{driverId}")]
+        public async Task<ActionResult<FavoriteStatusResponse>> IsFavoriteDriver(int driverId)
+        {
+            return Ok(new FavoriteStatusResponse { IsFavorite = await _favoriteService.IsFavoriteDriverAsync(GetCurrentUserId(), driverId) });
         }
 
         [HttpPost("drivers/{driverId}")]
@@ -39,9 +47,15 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpGet("teams")]
-        public async Task<ActionResult<List<TeamResponse>>> GetTeams()
+        public async Task<ActionResult<PagedResult<TeamResponse>>> GetTeams([FromQuery] PageRequest paging)
         {
-            return Ok(await _favoriteService.GetTeamsAsync(GetCurrentUserId()));
+            return Ok(await _favoriteService.GetTeamsAsync(GetCurrentUserId(), paging));
+        }
+
+        [HttpGet("teams/{teamId}")]
+        public async Task<ActionResult<FavoriteStatusResponse>> IsFavoriteTeam(int teamId)
+        {
+            return Ok(new FavoriteStatusResponse { IsFavorite = await _favoriteService.IsFavoriteTeamAsync(GetCurrentUserId(), teamId) });
         }
 
         [HttpPost("teams/{teamId}")]

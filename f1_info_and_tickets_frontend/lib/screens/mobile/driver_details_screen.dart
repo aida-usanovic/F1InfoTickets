@@ -33,10 +33,10 @@ class _DriverDetailsScreenState extends State<DriverDetailsScreen> {
 
   Future<void> _loadFavorite() async {
     try {
-      final favorites = await _favorites.getDrivers();
-      if (mounted) setState(() => _isFavorite = favorites.any((d) => d.driverID == widget.driverId));
+      final isFavorite = await _favorites.isFavoriteDriver(widget.driverId);
+      if (mounted) setState(() => _isFavorite = isFavorite);
     } catch (_) {
-      // Without the favourites list the heart button is simply hidden.
+      // Without the favourite status the heart button is simply hidden.
     }
   }
 

@@ -17,3 +17,13 @@ class PagedResult<T> {
 
   int get totalPages => totalCount == 0 ? 1 : (totalCount / pageSize).ceil();
 }
+
+/// Loads every page of a paged endpoint, for short lists a screen needs complete (e.g. a team's line-up).
+Future<List<T>> fetchAllPages<T>(Future<PagedResult<T>> Function(int page) load) async {
+  final items = <T>[];
+  for (var page = 1; ; page++) {
+    final result = await load(page);
+    items.addAll(result.items);
+    if (result.items.isEmpty || items.length >= result.totalCount) return items;
+  }
+}
