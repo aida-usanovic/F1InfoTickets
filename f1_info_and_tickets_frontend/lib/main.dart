@@ -7,6 +7,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/mobile/mobile_shell.dart';
 import 'state/auth_state.dart';
 import 'state/cart_state.dart';
+import 'state/notification_state.dart';
 import 'theme/app_theme.dart';
 import 'widgets/state_views.dart';
 
@@ -17,6 +18,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthState()..restoreSession()),
         ChangeNotifierProvider(create: (_) => CartState()),
+        ChangeNotifierProvider(create: (_) => NotificationState()),
       ],
       child: const F1App(),
     ),

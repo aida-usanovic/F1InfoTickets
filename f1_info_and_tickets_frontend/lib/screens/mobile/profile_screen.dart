@@ -5,6 +5,7 @@ import '../../api/providers.dart';
 import '../../models/user.dart';
 import '../../state/auth_state.dart';
 import '../../state/cart_state.dart';
+import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/feedback.dart';
 import '../../widgets/state_views.dart';
@@ -23,22 +24,6 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<User> _future = ProfileProvider().get();
-  int _unread = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUnread();
-  }
-
-  Future<void> _loadUnread() async {
-    try {
-      final count = await NotificationProvider().unreadCount();
-      if (mounted) setState(() => _unread = count);
-    } catch (_) {
-      // Only the badge is affected.
-    }
-  }
 
   Future<void> _open(Widget screen, {bool reloadProfile = false}) async {
     final changed = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => screen));
@@ -48,7 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _future = ProfileProvider().get();
       });
     }
-    _loadUnread();
   }
 
   Future<void> _logout() async {
@@ -108,7 +92,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     _MenuTile(Icons.confirmation_number_outlined, 'My tickets', () => _open(const MyTicketsScreen())),
-                    _MenuTile(Icons.notifications_outlined, 'Notifications', () => _open(const NotificationsScreen()), badge: _unread),
+                    _MenuTile(
+                      Icons.notifications_outlined,
+                      'Notifications',
+                      () => _open(const NotificationsScreen()),
+                      badge: context.watch<NotificationState>().unread,
+                    ),
                     _MenuTile(Icons.favorite_border, 'Favourite drivers & teams', () => _open(const FavoritesScreen())),
                   ],
                 ),

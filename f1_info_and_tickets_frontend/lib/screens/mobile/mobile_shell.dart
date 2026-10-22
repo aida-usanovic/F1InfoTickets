@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../api/providers.dart';
 import '../../state/cart_state.dart';
+import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/brand_logo.dart';
 import 'cart_screen.dart';
@@ -21,9 +21,9 @@ class MobileShell extends StatefulWidget {
   State<MobileShell> createState() => _MobileShellState();
 }
 
-class _MobileShellState extends State<MobileShell> {
+class _MobileShellState extends State<MobileShell> with WidgetsBindingObserver {
   int _index = 0;
-  int _unread = 0;
+  late final NotificationState _notifications = context.read<NotificationState>();
 
   static const _tabs = [
     (title: 'Home', icon: Icons.home_outlined, selected: Icons.home),
@@ -36,19 +36,25 @@ class _MobileShellState extends State<MobileShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CartState>().load().catchError((_) {});
-      _loadUnread();
+      // Polls for new notifications every 30 seconds while the customer app is open.
+      _notifications.start();
     });
   }
 
-  Future<void> _loadUnread() async {
-    try {
-      final count = await NotificationProvider().unreadCount();
-      if (mounted) setState(() => _unread = count);
-    } catch (_) {
-      // The badge is optional; the profile screen shows errors.
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notifications.stop();
+    super.dispose();
+  }
+
+  /// Checks right away when the app comes back from the background instead of waiting for the next poll.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _notifications.refresh();
   }
 
   void _openTab(int index) => setState(() => _index = index);
@@ -57,12 +63,12 @@ class _MobileShellState extends State<MobileShell> {
 
   Future<void> _openProfile() async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-    _loadUnread();
   }
 
   @override
   Widget build(BuildContext context) {
     final cartCount = context.watch<CartState>().count;
+    final unread = context.watch<NotificationState>().unread;
     return Scaffold(
       appBar: AppBar(
         title: const BrandLogo(size: 20),
@@ -81,8 +87,8 @@ class _MobileShellState extends State<MobileShell> {
             tooltip: 'Profile',
             onPressed: _openProfile,
             icon: Badge(
-              isLabelVisible: _unread > 0,
-              label: Text('$_unread'),
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
               backgroundColor: AppColors.red,
               child: const Icon(Icons.person_outline),
             ),
