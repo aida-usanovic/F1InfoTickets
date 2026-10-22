@@ -7,5 +7,7 @@
         public int? TicketTypeID { get; set; }
         public DateTime? PurchaseDateFrom { get; set; }
         public DateTime? PurchaseDateTo { get; set; }
+        // true: races that have not started yet, false: races that already took place.
+        public bool? Upcoming { get; set; }
     }
 }

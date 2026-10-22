@@ -266,7 +266,7 @@ class _TicketOffersTabState extends State<_TicketOffersTab> with AutomaticKeepAl
     super.build(context);
     return PagedTable<RaceTicketCategory>(
       controller: _table,
-      load: (query) => _provider.get(filter: {...query, 'TicketTypeID': _ticketTypeId, 'UpcomingOnly': _upcomingOnly ? true : null}),
+      load: (query) => _provider.get(filter: {...query, 'TicketTypeID': _ticketTypeId, 'Upcoming': _upcomingOnly ? true : null}),
       searchHint: 'Search by race or ticket type',
       emptyMessage: 'No ticket offers.',
       filters: [

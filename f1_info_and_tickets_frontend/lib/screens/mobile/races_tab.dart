@@ -37,12 +37,9 @@ class _RacesTabState extends State<RacesTab> {
     });
   }
 
-  Future<PagedResult<Race>> _load(int page) async {
-    final result = await RaceProvider().get(filter: {'Upcoming': _upcoming, 'SearchTerm': _search, 'Page': page, 'PageSize': 10});
-    // Finished races are shown newest first.
-    if (!_upcoming) result.items.sort((a, b) => b.date.compareTo(a.date));
-    return result;
-  }
+  // The server orders finished races newest first.
+  Future<PagedResult<Race>> _load(int page) =>
+      RaceProvider().get(filter: {'Upcoming': _upcoming, 'SearchTerm': _search, 'Page': page, 'PageSize': 10});
 
   @override
   Widget build(BuildContext context) {

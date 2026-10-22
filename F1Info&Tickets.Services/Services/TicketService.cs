@@ -18,10 +18,13 @@ namespace F1Info_Tickets.Services.Services
         {
             if (search == null) return query;
 
+            // A customer's own tickets (UserID set) are searched by race, circuit and country; the admin list also by customer.
             if (!string.IsNullOrWhiteSpace(search.SearchTerm))
-                query = query.Where(t => t.User.Username.Contains(search.SearchTerm)
-                    || (t.User.FirstName + " " + t.User.LastName).Contains(search.SearchTerm)
-                    || t.RaceTicketCategory.Race.RaceName.Contains(search.SearchTerm));
+                query = query.Where(t => t.RaceTicketCategory.Race.RaceName.Contains(search.SearchTerm)
+                    || t.RaceTicketCategory.Race.Circuit.Name.Contains(search.SearchTerm)
+                    || t.RaceTicketCategory.Race.Circuit.City.Country.Name.Contains(search.SearchTerm)
+                    || (search.UserID == null && (t.User.Username.Contains(search.SearchTerm)
+                        || (t.User.FirstName + " " + t.User.LastName).Contains(search.SearchTerm))));
             if (search.UserID != null)
                 query = query.Where(t => t.UserID == search.UserID);
             if (search.RaceID != null)
@@ -32,10 +35,20 @@ namespace F1Info_Tickets.Services.Services
                 query = query.Where(t => t.PurchaseDate >= search.PurchaseDateFrom);
             if (search.PurchaseDateTo != null)
                 query = query.Where(t => t.PurchaseDate < search.PurchaseDateTo.Value.Date.AddDays(1));
+            if (search.Upcoming == true)
+                query = query.Where(t => t.RaceTicketCategory.Race.Date > DateTime.UtcNow);
+            if (search.Upcoming == false)
+                query = query.Where(t => t.RaceTicketCategory.Race.Date <= DateTime.UtcNow);
 
             return query;
         }
 
-        protected override IQueryable<Ticket> ApplyOrder(IQueryable<Ticket> query) => query.OrderByDescending(t => t.PurchaseDate);
+        // Upcoming tickets: the nearest race first; past tickets: the latest race first; otherwise the latest purchase first.
+        protected override IQueryable<Ticket> ApplyOrder(IQueryable<Ticket> query, TicketSearchObject? search) => search?.Upcoming switch
+        {
+            true => query.OrderBy(t => t.RaceTicketCategory.Race.Date).ThenBy(t => t.TicketID),
+            false => query.OrderByDescending(t => t.RaceTicketCategory.Race.Date).ThenBy(t => t.TicketID),
+            _ => query.OrderByDescending(t => t.PurchaseDate).ThenByDescending(t => t.TicketID)
+        };
     }
 }

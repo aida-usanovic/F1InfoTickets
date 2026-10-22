@@ -34,6 +34,12 @@ namespace F1Info_Tickets.Services.BaseServices
             return query;
         }
 
+        // For services whose order depends on the search (e.g. upcoming vs. past); stable across pages.
+        protected virtual IQueryable<TDb> ApplyOrder(IQueryable<TDb> query, TSearch? search)
+        {
+            return ApplyOrder(query);
+        }
+
         public virtual async Task<PagedResult<TResponse>> GetAsync(TSearch search)
         {
             var query = AddInclude(_context.Set<TDb>().AsQueryable());
@@ -52,7 +58,7 @@ namespace F1Info_Tickets.Services.BaseServices
                 pageSize = Math.Min(pageSize, maxPageSize);
             }
 
-            var items = await ApplyOrder(query)
+            var items = await ApplyOrder(query, search)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

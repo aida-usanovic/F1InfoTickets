@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/providers.dart';
 import '../../core/formatters.dart';
+import '../../core/paged_result.dart';
 import '../../models/ticket.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/mobile/infinite_list.dart';
 import '../../widgets/mobile/mobile_widgets.dart';
-import '../../widgets/state_views.dart';
 import 'ticket_details_screen.dart';
 
-/// The customer's tickets, upcoming or past, with search by race.
+/// The customer's tickets, upcoming or past, loaded page by page; the filter and the search run on the server.
 class MyTicketsScreen extends StatefulWidget {
   const MyTicketsScreen({super.key});
 
@@ -17,19 +20,30 @@ class MyTicketsScreen extends StatefulWidget {
 }
 
 class _MyTicketsScreenState extends State<MyTicketsScreen> {
-  late Future<List<Ticket>> _future = _load();
+  final _list = InfiniteListController();
+  Timer? _debounce;
   bool _upcoming = true;
   String _search = '';
 
-  Future<List<Ticket>> _load() async => (await TicketProvider().getMine(pageSize: 100)).items;
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearch(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      setState(() => _search = value.trim());
+      _list.reload();
+    });
+  }
+
+  Future<PagedResult<Ticket>> _load(int page) => TicketProvider().getMine(page: page, upcoming: _upcoming, search: _search);
 
   Future<void> _open(Ticket ticket) async {
     final changed = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => TicketDetailsScreen(ticket: ticket)));
-    if (changed == true) {
-      setState(() {
-        _future = _load();
-      });
-    }
+    if (changed == true) _list.reload();
   }
 
   @override
@@ -50,54 +64,27 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                       ButtonSegment(value: false, label: Text('Past')),
                     ],
                     selected: {_upcoming},
-                    onSelectionChanged: (s) => setState(() => _upcoming = s.first),
+                    onSelectionChanged: (s) {
+                      setState(() => _upcoming = s.first);
+                      _list.reload();
+                    },
                   ),
                 ),
                 const SizedBox(height: 10),
-                SearchField(hint: 'Search by race', onChanged: (v) => setState(() => _search = v.trim().toLowerCase())),
+                SearchField(hint: 'Search by race, circuit or country', onChanged: _onSearch),
               ],
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Ticket>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return ErrorView(
-                    error: snapshot.error!,
-                    onRetry: () => setState(() {
-                      _future = _load();
-                    }),
-                  );
-                }
-                final tickets = snapshot.data;
-                if (tickets == null) return const LoadingView();
-                final now = DateTime.now();
-                final filtered = tickets
-                    .where((t) => t.raceDate.isAfter(now) == _upcoming)
-                    .where((t) => _search.isEmpty || (t.raceName ?? '').toLowerCase().contains(_search))
-                    .toList();
-                if (filtered.isEmpty) {
-                  return EmptyView(
-                    message: _upcoming ? 'You have no tickets for upcoming races.' : 'You have no tickets for past races.',
-                    icon: Icons.confirmation_number_outlined,
-                  );
-                }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {
-                      _future = _load();
-                    });
-                    await _future;
-                  },
-                  child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) => _TicketCard(ticket: filtered[i], onTap: () => _open(filtered[i])),
-                  ),
-                );
-              },
+            child: InfiniteList<Ticket>(
+              controller: _list,
+              load: _load,
+              emptyMessage: _search.isNotEmpty
+                  ? 'No tickets match "$_search".'
+                  : _upcoming
+                  ? 'You have no tickets for upcoming races.'
+                  : 'You have no tickets for past races.',
+              itemBuilder: (context, ticket) => _TicketCard(ticket: ticket, onTap: () => _open(ticket)),
             ),
           ),
         ],

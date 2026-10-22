@@ -130,8 +130,11 @@ class TicketProvider extends BaseProvider<Ticket> {
   @override
   Ticket fromJson(Map<String, dynamic> json) => Ticket.fromJson(json);
 
-  Future<PagedResult<Ticket>> getMine({int page = 1, int pageSize = 50}) async =>
-      PagedResult.fromJson(await api.get('$endpoint/my', query: {'Page': page, 'PageSize': pageSize}), fromJson);
+  /// The signed-in customer's tickets; [upcoming] and [search] are applied on the server across all tickets.
+  Future<PagedResult<Ticket>> getMine({int page = 1, int pageSize = 10, bool? upcoming, String? search}) async => PagedResult.fromJson(
+    await api.get('$endpoint/my', query: {'Page': page, 'PageSize': pageSize, 'Upcoming': upcoming, 'SearchTerm': search}),
+    fromJson,
+  );
 }
 
 class ResultProvider {

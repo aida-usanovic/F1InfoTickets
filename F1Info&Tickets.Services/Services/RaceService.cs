@@ -52,6 +52,10 @@ namespace F1Info_Tickets.Services.Services
 
         protected override IQueryable<Race> ApplyOrder(IQueryable<Race> query) => query.OrderBy(r => r.Date);
 
+        // Finished races: the latest first, so paging starts with the most recent race.
+        protected override IQueryable<Race> ApplyOrder(IQueryable<Race> query, RaceSearchObject? search) =>
+            search?.Upcoming == false ? query.OrderByDescending(r => r.Date) : ApplyOrder(query);
+
         protected override async Task BeforeInsert(Race entity, RaceInsertRequest request)
         {
             await EnsureCircuitExists(request.CircuitID);
