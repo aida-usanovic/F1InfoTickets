@@ -7,6 +7,7 @@ import '../../core/formatters.dart';
 import '../../core/validators.dart';
 import '../../models/driver.dart';
 import '../../models/race.dart';
+import '../../models/reference.dart';
 import '../../models/result.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/admin/admin_page.dart';
@@ -27,9 +28,9 @@ class _ResultRow {
   _ResultRow({this.driverId, String time = '', this.fastestLap = false}) : time = TextEditingController(text: time);
 }
 
-/// Race classification entry. The race list holds the upcoming races and the races that finished in the last 48 hours;
-/// results can be saved from the start of the race until 48 hours after it. The order of the rows is the finishing order,
-/// the team and points are filled in automatically.
+/// Race classification entry. In entry mode the race list holds the upcoming races and the races that finished in the last
+/// 48 hours; results can be saved from the start of the race until 48 hours after it. The order of the rows is the finishing
+/// order, the team and points are filled in automatically. Past mode lists the finished races of a season to view their results.
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
 
@@ -40,6 +41,11 @@ class ResultsScreen extends StatefulWidget {
 class _ResultsScreenState extends State<ResultsScreen> {
   final _results = ResultProvider();
   final _formKey = GlobalKey<FormState>();
+
+  /// false: entry (upcoming races and the last 48 hours), true: finished races of [_seasonId], read only after 48 hours.
+  bool _past = false;
+  List<Season>? _seasons;
+  int? _seasonId;
 
   List<Race>? _races;
   int? _raceId;
@@ -79,10 +85,23 @@ class _ResultsScreenState extends State<ResultsScreen> {
       _raceResults = null;
     });
     try {
-      // Upcoming races and races that finished less than 48 hours ago, the earliest first
-      // (so a race whose results entry is open is selected by default).
-      final races = await RaceProvider().getAll(filter: {'DateFrom': DateTime.now().subtract(_editWindow)});
-      races.sort((a, b) => a.date.compareTo(b.date));
+      final List<Race> races;
+      if (_past) {
+        if (_seasons == null) {
+          final seasonProvider = SeasonProvider();
+          final seasons = await seasonProvider.getAll();
+          final current = await seasonProvider.getCurrent();
+          _seasons = seasons..sort((a, b) => b.year.compareTo(a.year));
+          _seasonId = current?.seasonID ?? seasons.firstOrNull?.seasonID;
+        }
+        // Finished races of the season, the latest first (the server orders them).
+        races = await RaceProvider().getAll(filter: {'SeasonID': _seasonId, 'Upcoming': false});
+      } else {
+        // Upcoming races and races that finished less than 48 hours ago, the earliest first
+        // (so a race whose results entry is open is selected by default).
+        races = await RaceProvider().getAll(filter: {'DateFrom': DateTime.now().subtract(_editWindow)});
+        races.sort((a, b) => a.date.compareTo(b.date));
+      }
       if (!mounted) return;
       setState(() => _races = races);
       if (races.isNotEmpty) await _selectRace(races.first.raceID);
@@ -194,7 +213,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
     final canEdit = _raceResults?.canEdit ?? false;
     return AdminPage(
       title: 'Results',
-      subtitle: 'Results can be entered from the race start until 48 hours after it',
+      subtitle: 'Results can be entered from the race start until 48 hours after it; past results can be viewed',
       actions: [
         if (canEdit && !_loadingRace)
           ElevatedButton.icon(
@@ -215,10 +234,39 @@ class _ResultsScreenState extends State<ResultsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('Enter results'), icon: Icon(Icons.edit_note)),
+                ButtonSegment(value: true, label: Text('Past results'), icon: Icon(Icons.history)),
+              ],
+              selected: {_past},
+              onSelectionChanged: _saving
+                  ? null
+                  : (s) {
+                      _past = s.first;
+                      _init();
+                    },
+            ),
+            if (_past && _seasons != null)
+              SizedBox(
+                width: 160,
+                child: DropdownButtonFormField<int>(
+                  key: ValueKey('season-$_seasonId'),
+                  initialValue: _seasonId,
+                  decoration: const InputDecoration(labelText: 'Season'),
+                  items: [for (final s in _seasons!) DropdownMenuItem(value: s.seasonID, child: Text('${s.year}'))],
+                  onChanged: (id) {
+                    _seasonId = id;
+                    _init();
+                  },
+                ),
+              ),
             SizedBox(width: 560, child: _buildRaceDropdown()),
-            const SizedBox(width: 12),
             IconButton(tooltip: 'Refresh races', onPressed: _saving ? null : _init, icon: const Icon(Icons.refresh)),
           ],
         ),
@@ -241,24 +289,31 @@ class _ResultsScreenState extends State<ResultsScreen> {
       key: ValueKey('races-${races.length}-${races.firstOrNull?.raceID}'),
       initialValue: _raceId,
       isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Race (upcoming or finished in the last 48 hours)'),
+      decoration: InputDecoration(labelText: _past ? 'Finished race' : 'Race (upcoming or finished in the last 48 hours)'),
       items: [
         for (final r in races)
           DropdownMenuItem(
             value: r.raceID,
-            child: Text(
-              '${r.raceName} · ${formatDateTime(r.date)}  ${r.date.isAfter(now) ? '(upcoming)' : '(entry open)'}',
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text('${r.raceName} · ${formatDateTime(r.date)}  ${_raceStatus(r, now)}', overflow: TextOverflow.ellipsis),
           ),
       ],
       onChanged: _saving ? null : (id) => _selectRace(id!),
     );
   }
 
+  static String _raceStatus(Race race, DateTime now) {
+    if (race.date.isAfter(now)) return '(upcoming)';
+    return race.date.add(_editWindow).isAfter(now) ? '(entry open)' : '';
+  }
+
   Widget _buildRaceContent() {
     if (_races != null && _races!.isEmpty) {
-      return const EmptyView(message: 'There are no upcoming races and no race finished in the last 48 hours.', icon: Icons.flag_outlined);
+      return EmptyView(
+        message: _past
+            ? 'No race of this season has finished yet.'
+            : 'There are no upcoming races and no race finished in the last 48 hours.',
+        icon: Icons.flag_outlined,
+      );
     }
     final raceResults = _raceResults;
     if (raceResults == null || _loadingRace) return const LoadingView();
