@@ -42,6 +42,26 @@ namespace F1Info_Tickets.Services.Services
 
         protected override async Task BeforeUpdate(Driver entity, DriverUpdateRequest request)
         {
+            // A reserve driver who becomes a race driver must fit the limit of 2 race drivers in every team line-up they belong to.
+            var wasReserve = _context.Entry(entity).Property(x => x.IsReserveDriver).OriginalValue;
+            if (wasReserve && !entity.IsReserveDriver)
+            {
+                var full = await _context.TeamDrivers
+                    .Where(td => td.DriverID == entity.DriverID)
+                    .Select(td => new
+                    {
+                        td.Team.TeamName,
+                        td.Season.Year,
+                        RaceDrivers = _context.TeamDrivers.Count(o => o.TeamID == td.TeamID && o.SeasonID == td.SeasonID
+                            && o.DriverID != entity.DriverID && !o.Driver.IsReserveDriver)
+                    })
+                    .Where(x => x.RaceDrivers >= 2)
+                    .OrderByDescending(x => x.Year)
+                    .FirstOrDefaultAsync();
+                if (full != null)
+                    throw new BusinessException($"{full.TeamName} already has 2 race drivers in the {full.Year} season, so this driver cannot become a race driver. Make one of them a reserve driver or remove the driver from that line-up first.");
+            }
+
             if (request.Image != null)
                 entity.PhotoUrl = await FileHelper.SaveImageAsync(request.Image, "drivers");
         }
