@@ -33,6 +33,7 @@ builder.Services.Configure<PayPalSettings>(builder.Configuration.GetSection("Pay
 builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection("RabbitMQ"));
 
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IContinentService, ContinentService>();
 builder.Services.AddScoped<ICountryService, CountryService>();

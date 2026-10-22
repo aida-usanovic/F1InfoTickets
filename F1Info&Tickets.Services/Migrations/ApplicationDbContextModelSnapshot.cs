@@ -317,6 +317,41 @@ namespace F1Info_Tickets.Services.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("F1Info_Tickets.Services.Database.PasswordResetCode", b =>
+                {
+                    b.Property<int>("PasswordResetCodeID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PasswordResetCodeID"));
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int");
+
+                    b.HasKey("PasswordResetCodeID");
+
+                    b.HasIndex("UserID", "ExpiresAt");
+
+                    b.ToTable("PasswordResetCodes");
+                });
+
             modelBuilder.Entity("F1Info_Tickets.Services.Database.Payment", b =>
                 {
                     b.Property<int>("PaymentID")
@@ -926,6 +961,17 @@ namespace F1Info_Tickets.Services.Migrations
                 });
 
             modelBuilder.Entity("F1Info_Tickets.Services.Database.Notification", b =>
+                {
+                    b.HasOne("F1Info_Tickets.Services.Database.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("F1Info_Tickets.Services.Database.PasswordResetCode", b =>
                 {
                     b.HasOne("F1Info_Tickets.Services.Database.User", "User")
                         .WithMany()

@@ -14,10 +14,12 @@ namespace F1Info_Tickets.WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IPasswordResetService _passwordResetService;
 
-        public AuthController(IUserService userService)
+        public AuthController(IUserService userService, IPasswordResetService passwordResetService)
         {
             _userService = userService;
+            _passwordResetService = passwordResetService;
         }
 
         [HttpPost("login")]
@@ -40,6 +42,24 @@ namespace F1Info_Tickets.WebAPI.Controllers
         public async Task<ActionResult<UserResponse>> Register([FromBody] UserInsertRequest request)
         {
             return Ok(await _userService.RegisterAsync(request));
+        }
+
+        // Forgotten password, step 1: emails a one-time code. The answer is the same for unknown addresses.
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            await _passwordResetService.RequestCodeAsync(request);
+            return Ok(new { message = "If this email is registered, a reset code has been sent to it." });
+        }
+
+        // Forgotten password, step 2: the code from the email and a new password.
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            await _passwordResetService.ResetPasswordAsync(request);
+            return Ok(new { message = "Your password was reset. You can sign in now." });
         }
 
         [HttpPost("logout")]

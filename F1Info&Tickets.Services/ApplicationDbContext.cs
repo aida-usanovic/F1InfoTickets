@@ -36,6 +36,7 @@ namespace F1Info_Tickets.Services
         public DbSet<FavoriteTeam> FavoriteTeams { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<RevokedToken> RevokedTokens { get; set; }
+        public DbSet<PasswordResetCode> PasswordResetCodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -57,6 +58,8 @@ namespace F1Info_Tickets.Services
             modelBuilder.Entity<FavoriteTeam>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserID).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<FavoriteTeam>().HasOne(x => x.Team).WithMany().HasForeignKey(x => x.TeamID).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<Notification>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserID).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PasswordResetCode>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserID).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PasswordResetCode>().HasIndex(x => new { x.UserID, x.ExpiresAt });
             modelBuilder.Entity<TeamDriver>().HasOne(x => x.Team).WithMany(t => t.TeamDrivers).HasForeignKey(x => x.TeamID).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<TeamDriver>().HasOne(x => x.Driver).WithMany(d => d.TeamDrivers).HasForeignKey(x => x.DriverID).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<RaceTicketCategory>().HasOne(x => x.Race).WithMany(r => r.TicketCategories).HasForeignKey(x => x.RaceID).OnDelete(DeleteBehavior.Cascade);

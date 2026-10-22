@@ -58,6 +58,12 @@ class AuthState extends ChangeNotifier {
   /// Customer self-registration (mobile only).
   Future<void> register(Map<String, dynamic> request) => _api.post('Auth/register', body: request);
 
+  /// Forgotten password, step 1: the API emails a one-time code to this address.
+  Future<void> requestPasswordReset(String email) => _api.post('Auth/forgot-password', body: {'email': email});
+
+  /// Forgotten password, step 2: [request] holds email, code, newPassword and newPasswordConfirmation.
+  Future<void> resetPassword(Map<String, dynamic> request) => _api.post('Auth/reset-password', body: request);
+
   Future<void> logout() async {
     try {
       if (_token != null) await _api.post('Auth/logout');

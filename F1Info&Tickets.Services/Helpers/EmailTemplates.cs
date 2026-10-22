@@ -49,6 +49,20 @@ namespace F1Info_Tickets.Services.Helpers
             };
         }
 
+        public static EmailMessage PasswordReset(User user, string code, TimeSpan validFor)
+        {
+            return new EmailMessage
+            {
+                ToEmail = user.Email,
+                ToName = $"{user.FirstName} {user.LastName}",
+                Subject = "F1 Info & Tickets - password reset code",
+                HtmlBody = $@"<h3>Hello {E(user.FirstName)},</h3>
+<p>Use this code to reset your password in the F1 Info &amp; Tickets app:</p>
+<p style=""font-size:28px;font-weight:bold;letter-spacing:6px"">{code}</p>
+<p>The code is valid for {(int)validFor.TotalMinutes} minutes and can be used once. If you did not ask for a new password, ignore this email.</p>"
+            };
+        }
+
         private static string E(string value) => WebUtility.HtmlEncode(value);
         private static string Money(decimal value) => value.ToString("F2", CultureInfo.InvariantCulture);
     }
