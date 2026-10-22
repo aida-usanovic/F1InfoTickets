@@ -180,7 +180,7 @@ namespace F1Info_Tickets.Services.Seed
                 Country = reference.Countries[d.Country],
                 BirthDate = d.Born,
                 IsReserveDriver = d.Reserve,
-                // Photo files are named after the last name without diacritics (wwwroot/Images/Drivers, credits in Images/CREDITS.md).
+                // Photo files in wwwroot/Images/Drivers are named after the last name without diacritics.
                 PhotoUrl = $"/Images/Drivers/{d.Last.ToLowerInvariant().Replace("ü", "u")}.png"
             }, d.Team)).ToList();
 
