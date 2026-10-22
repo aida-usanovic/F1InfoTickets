@@ -98,7 +98,17 @@ class _HomeTabState extends State<HomeTab> {
                 for (final race in data.recommended)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: RaceCard(race: race, showPrice: true, onTap: () => _openRace(race)),
+                    child: RaceCard(
+                      race: race,
+                      showPrice: true,
+                      onTap: () => _openRace(race),
+                      onRecommendedTicketTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => RaceTicketsScreen(race: race, recommendedTicketTypeId: race.recommendedTicketTypeID),
+                        ),
+                      ),
+                    ),
                   ),
             ],
           ),

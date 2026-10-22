@@ -171,7 +171,10 @@ class RaceCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool showPrice;
 
-  const RaceCard({super.key, required this.race, required this.onTap, this.showPrice = false});
+  /// Opens the purchase with the recommended ticket type; the offer is shown only when this is set.
+  final VoidCallback? onRecommendedTicketTap;
+
+  const RaceCard({super.key, required this.race, required this.onTap, this.showPrice = false, this.onRecommendedTicketTap});
 
   @override
   Widget build(BuildContext context) {
@@ -227,12 +230,61 @@ class RaceCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(race.recommendationReason!, style: const TextStyle(fontSize: 12, color: AppColors.gold)),
                     ],
+                    if (race.recommendedTicketType != null && onRecommendedTicketTap != null) ...[
+                      const SizedBox(height: 8),
+                      _RecommendedTicket(race: race, onTap: onRecommendedTicketTap!),
+                    ],
                   ],
                 ),
               ),
               const Icon(Icons.chevron_right, color: AppColors.muted),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The ticket type the user buys most often, offered with a recommended race.
+class _RecommendedTicket extends StatelessWidget {
+  final Race race;
+  final VoidCallback onTap;
+
+  const _RecommendedTicket({required this.race, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.red),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.event_seat, size: 18, color: AppColors.red),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Your usual ticket', style: TextStyle(fontSize: 11, color: AppColors.muted)),
+                  Text(
+                    '${race.recommendedTicketType} · ${formatMoney(race.recommendedTicketPrice)}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+            const Text(
+              'Buy',
+              style: TextStyle(color: AppColors.red, fontWeight: FontWeight.w700),
+            ),
+          ],
         ),
       ),
     );

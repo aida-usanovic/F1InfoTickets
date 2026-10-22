@@ -20,6 +20,11 @@ class Race {
   final double? minTicketPrice;
   final String? recommendationReason;
 
+  /// Recommendations only: the ticket type the user buys most often, offered for this race.
+  final int? recommendedTicketTypeID;
+  final String? recommendedTicketType;
+  final double? recommendedTicketPrice;
+
   Race({
     required this.raceID,
     required this.raceName,
@@ -39,6 +44,9 @@ class Race {
     this.imageUrl,
     this.minTicketPrice,
     this.recommendationReason,
+    this.recommendedTicketTypeID,
+    this.recommendedTicketType,
+    this.recommendedTicketPrice,
   });
 
   bool get isUpcoming => date.isAfter(DateTime.now());
@@ -62,6 +70,9 @@ class Race {
     imageUrl: json['imageUrl'],
     minTicketPrice: json['minTicketPrice'] == null ? null : toDouble(json['minTicketPrice']),
     recommendationReason: json['recommendationReason'],
+    recommendedTicketTypeID: json['recommendedTicketTypeID'],
+    recommendedTicketType: json['recommendedTicketType'],
+    recommendedTicketPrice: json['recommendedTicketPrice'] == null ? null : toDouble(json['recommendedTicketPrice']),
   );
 }
 

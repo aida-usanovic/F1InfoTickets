@@ -14,7 +14,10 @@ import 'cart_screen.dart';
 class RaceTicketsScreen extends StatefulWidget {
   final Race race;
 
-  const RaceTicketsScreen({super.key, required this.race});
+  /// Ticket type recommended for the user (the one they buy most often); it is highlighted and preselected.
+  final int? recommendedTicketTypeId;
+
+  const RaceTicketsScreen({super.key, required this.race, this.recommendedTicketTypeId});
 
   @override
   State<RaceTicketsScreen> createState() => _RaceTicketsScreenState();
@@ -28,7 +31,19 @@ class _RaceTicketsScreenState extends State<RaceTicketsScreen> {
   int _quantity = 1;
   bool _adding = false;
 
-  Future<List<RaceTicketCategory>> _load() => RaceTicketCategoryProvider().getAll(filter: {'RaceID': widget.race.raceID});
+  bool _preselected = false;
+
+  Future<List<RaceTicketCategory>> _load() async {
+    final categories = await RaceTicketCategoryProvider().getAll(filter: {'RaceID': widget.race.raceID});
+    // Preselect the recommended ticket type once, when the screen opens.
+    if (!_preselected) {
+      _preselected = true;
+      final recommended = categories.where((c) => c.ticketTypeID == widget.recommendedTicketTypeId && c.available > 0).firstOrNull;
+      // setState so the quantity bar (outside the FutureBuilder) appears as well.
+      if (recommended != null && mounted) setState(() => _selected = recommended);
+    }
+    return categories;
+  }
 
   int get _maxQuantity => _selected == null ? 1 : (_selected!.available < _maxPerOrder ? _selected!.available : _maxPerOrder);
 
@@ -90,6 +105,7 @@ class _RaceTicketsScreenState extends State<RaceTicketsScreen> {
               for (final c in categories)
                 _CategoryTile(
                   category: c,
+                  recommended: c.ticketTypeID == widget.recommendedTicketTypeId,
                   selected: _selected?.raceTicketCategoryID == c.raceTicketCategoryID,
                   onTap: () {
                     if (c.available == 0) return;
@@ -151,7 +167,9 @@ class _CategoryTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _CategoryTile({required this.category, required this.selected, required this.onTap});
+  final bool recommended;
+
+  const _CategoryTile({required this.category, required this.recommended, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +195,11 @@ class _CategoryTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(category.ticketTypeName ?? '-', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                      if (recommended)
+                        const Text(
+                          'Recommended for you: the ticket type you buy most often',
+                          style: TextStyle(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
                       if (category.ticketTypeDescription != null)
                         Text(category.ticketTypeDescription!, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                       const SizedBox(height: 4),
