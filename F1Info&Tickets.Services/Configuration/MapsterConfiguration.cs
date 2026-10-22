@@ -50,6 +50,7 @@ namespace F1Info_Tickets.Services.Configuration
                 .Map(d => d.TicketType, s => s.RaceTicketCategory.TicketType.Name)
                 .Map(d => d.PaymentMethod, s => s.Payment.PaymentMethod)
                 .Map(d => d.PaymentStatus, s => s.Payment.Status)
+                .Map(d => d.RefundedAt, s => s.Payment.RefundedAt)
                 .Map(d => d.Status, s => s.Status.ToString());
 
             config.NewConfig<Driver, DriverResponse>()

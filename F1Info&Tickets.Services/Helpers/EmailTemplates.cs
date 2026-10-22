@@ -63,6 +63,30 @@ namespace F1Info_Tickets.Services.Helpers
             };
         }
 
+        public static EmailMessage Refund(User user, IReadOnlyList<TicketLine> tickets, decimal total, string currency)
+        {
+            var rows = new StringBuilder();
+            foreach (var t in tickets)
+            {
+                rows.Append($"<tr><td>{E(t.RaceName)}</td><td>{t.RaceDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture)}</td><td>{E(t.TicketType)}</td>" +
+                            $"<td>{Money(t.Price)} {currency}</td></tr>");
+            }
+
+            return new EmailMessage
+            {
+                ToEmail = user.Email,
+                ToName = $"{user.FirstName} {user.LastName}",
+                Subject = "F1 Info & Tickets - refund confirmation",
+                HtmlBody = $@"<h3>Hello {E(user.FirstName)},</h3>
+<p>Your purchase was refunded. These tickets ({tickets.Count}) are cancelled and their QR codes are no longer valid:</p>
+<table border=""1"" cellpadding=""6"" cellspacing=""0"">
+<tr><th>Race</th><th>Date</th><th>Type</th><th>Price</th></tr>
+{rows}
+</table>
+<p><b>Refunded:</b> {Money(total)} {currency} to your PayPal account.</p>"
+            };
+        }
+
         private static string E(string value) => WebUtility.HtmlEncode(value);
         private static string Money(decimal value) => value.ToString("F2", CultureInfo.InvariantCulture);
     }

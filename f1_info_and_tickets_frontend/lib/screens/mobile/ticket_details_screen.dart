@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../api/providers.dart';
 import '../../core/formatters.dart';
 import '../../models/ticket.dart';
+import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/feedback.dart';
 import '../../widgets/mobile/mobile_widgets.dart';
 
-/// Ticket with its entry QR code. Tickets for upcoming races can be refunded (the whole purchase is refunded).
+/// Ticket with its entry QR code. Tickets for upcoming races can be refunded (the whole purchase is refunded);
+/// refunded and used tickets no longer show the QR code.
 class TicketDetailsScreen extends StatefulWidget {
   final Ticket ticket;
 
@@ -37,6 +40,8 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     try {
       await PaymentProvider().refund(widget.ticket.paymentID);
       if (!mounted) return;
+      // The refund notification is shown right away instead of after the next poll.
+      context.read<NotificationState>().refresh();
       showSuccess(context, 'The purchase was refunded and its tickets were cancelled.');
       Navigator.pop(context, true);
     } catch (e) {
@@ -54,17 +59,20 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-              child: QrImageView(data: t.qrCode, size: 220),
+          if (t.status == 'Active') ...[
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                child: QrImageView(data: t.qrCode, size: 220),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Center(
-            child: Text('Show this code at the circuit entrance.', style: TextStyle(color: AppColors.muted)),
-          ),
+            const SizedBox(height: 8),
+            const Center(
+              child: Text('Show this code at the circuit entrance.', style: TextStyle(color: AppColors.muted)),
+            ),
+          ] else
+            _InvalidTicketBanner(ticket: t),
           const SizedBox(height: 16),
           InfoCard(
             title: t.raceName,
@@ -76,6 +84,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
               InfoRow(Icons.shopping_cart_outlined, 'Purchased', formatDateTime(t.purchaseDate)),
               InfoRow(Icons.payment, 'Payment', t.paymentMethod ?? '-'),
               InfoRow(Icons.verified_outlined, 'Status', t.statusLabel),
+              if (t.refundedAt != null) InfoRow(Icons.undo, 'Refunded', formatDateTime(t.refundedAt!)),
             ],
           ),
           if (_canRefund) ...[
@@ -89,6 +98,50 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
               label: const Text('Refund purchase'),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown instead of the QR code, so a refunded or used ticket cannot be presented at the entrance.
+class _InvalidTicketBanner extends StatelessWidget {
+  final Ticket ticket;
+
+  const _InvalidTicketBanner({required this.ticket});
+
+  @override
+  Widget build(BuildContext context) {
+    final refunded = ticket.status == 'Refunded';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.red.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.red.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(refunded ? Icons.money_off : Icons.qr_code_2, color: AppColors.red, size: 40),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  refunded ? 'Ticket refunded' : 'Ticket already used',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  refunded
+                      ? 'This ticket was cancelled${ticket.refundedAt != null ? ' on ${formatDateTime(ticket.refundedAt!)}' : ''} and is no longer valid for entry.'
+                      : 'This ticket was already scanned at the entrance.',
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

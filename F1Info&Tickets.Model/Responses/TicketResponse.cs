@@ -18,6 +18,7 @@
         public int PaymentID { get; set; }
         public string? PaymentMethod { get; set; }
         public string? PaymentStatus { get; set; }
+        public DateTime? RefundedAt { get; set; }
         public string Status { get; set; } = string.Empty;
     }
 }

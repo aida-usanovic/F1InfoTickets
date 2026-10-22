@@ -229,7 +229,9 @@ namespace F1Info_Tickets.Services.Services
         public async Task<PaymentResponse> RefundPayPalPaymentAsync(int paymentId, int userId)
         {
             var payment = await _context.Payments
+                .Include(p => p.User)
                 .Include(p => p.Tickets).ThenInclude(t => t.RaceTicketCategory).ThenInclude(c => c.Race)
+                .Include(p => p.Tickets).ThenInclude(t => t.RaceTicketCategory).ThenInclude(c => c.TicketType)
                 .FirstOrDefaultAsync(p => p.PaymentID == paymentId)
                 ?? throw new NotFoundException("Payment not found.");
 
@@ -256,14 +258,36 @@ namespace F1Info_Tickets.Services.Services
             if (!refundResponse.IsSuccessStatusCode)
                 await ThrowPayPalErrorAsync(refundResponse, "The PayPal refund failed.");
 
+            // Tickets, payment status and notification are stored in one SaveChanges; PaymentDate keeps the purchase time.
             foreach (var ticket in payment.Tickets)
             {
                 ticket.Status = TicketStatus.Refunded;
             }
 
             payment.Status = StatusRefunded;
-            payment.PaymentDate = DateTime.UtcNow;
+            payment.RefundedAt = DateTime.UtcNow;
+
+            var races = string.Join(", ", payment.Tickets.Select(t => t.RaceTicketCategory.Race.RaceName).Distinct());
+            _context.Notifications.Add(new Notification
+            {
+                UserID = userId,
+                Title = "Refund successful",
+                Message = $"Your purchase of {payment.Tickets.Count} ticket(s) for {races} was refunded. {FormatAmount(payment.Amount)} {payment.Currency} is returned to your PayPal account and the tickets are no longer valid.",
+                CreatedAt = DateTime.UtcNow
+            });
+
             await _context.SaveChangesAsync();
+
+            try
+            {
+                var lines = payment.Tickets.Select(t => new EmailTemplates.TicketLine(
+                    t.RaceTicketCategory.Race.RaceName, t.RaceTicketCategory.Race.Date, t.RaceTicketCategory.TicketType.Name, t.Price, t.QRCode)).ToList();
+                await _messageProducer.PublishEmailAsync(EmailTemplates.Refund(payment.User, lines, payment.Amount, payment.Currency));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Refund email for payment {PaymentId} could not be queued.", payment.PaymentID);
+            }
 
             return ToResponse(payment);
         }

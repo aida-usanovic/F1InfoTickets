@@ -17,6 +17,7 @@ namespace F1Info_Tickets.Services.Database
         [Required, MaxLength(20)]
         public string Status { get; set; } = string.Empty;
         public DateTime PaymentDate { get; set; }
+        public DateTime? RefundedAt { get; set; }
         public User User { get; set; } = null!;
         public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     }

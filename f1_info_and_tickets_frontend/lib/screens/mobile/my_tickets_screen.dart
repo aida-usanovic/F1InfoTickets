@@ -127,7 +127,7 @@ class _TicketCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              const Icon(Icons.qr_code_2, size: 44),
+              Icon(ticket.status == 'Refunded' ? Icons.money_off : Icons.qr_code_2, size: 44, color: ticket.status == 'Active' ? null : AppColors.muted),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

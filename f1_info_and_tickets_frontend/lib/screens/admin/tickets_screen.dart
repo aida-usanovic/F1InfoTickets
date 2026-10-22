@@ -173,6 +173,7 @@ class _TicketDetailsDialog extends StatelessWidget {
       (Icons.shopping_cart_outlined, 'Purchased', formatDateTime(ticket.purchaseDate)),
       (Icons.payment, 'Payment', '${ticket.paymentMethod ?? '-'} · ${ticket.paymentStatus ?? '-'}'),
       (Icons.verified_outlined, 'Status', ticket.statusLabel),
+      if (ticket.refundedAt != null) (Icons.undo, 'Refunded', formatDateTime(ticket.refundedAt!)),
     ];
     return Dialog(
       child: ConstrainedBox(

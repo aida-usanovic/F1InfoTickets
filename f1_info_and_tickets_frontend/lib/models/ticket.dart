@@ -16,6 +16,7 @@ class Ticket {
   final int paymentID;
   final String? paymentMethod;
   final String? paymentStatus;
+  final DateTime? refundedAt;
   final String status;
 
   Ticket({
@@ -34,6 +35,7 @@ class Ticket {
     required this.paymentID,
     this.paymentMethod,
     this.paymentStatus,
+    this.refundedAt,
     required this.status,
   });
 
@@ -61,6 +63,7 @@ class Ticket {
     paymentID: json['paymentID'],
     paymentMethod: json['paymentMethod'],
     paymentStatus: json['paymentStatus'],
+    refundedAt: parseDateTimeOrNull(json['refundedAt']),
     status: json['status'],
   );
 }
