@@ -41,6 +41,11 @@ namespace F1Info_Tickets.Services.Services
                 query = query.Where(r => r.Date > DateTime.UtcNow);
             if (search.Upcoming == false)
                 query = query.Where(r => r.Date <= DateTime.UtcNow);
+            if (search.DateFrom.HasValue)
+            {
+                var from = search.DateFrom.Value.ToUniversalTime();
+                query = query.Where(r => r.Date >= from);
+            }
 
             return query;
         }

@@ -166,10 +166,10 @@ namespace F1Info_Tickets.Services.Services
         {
             var now = DateTime.UtcNow;
             if (race.Date > now)
-                return (false, "Results can only be entered after the race has started.");
+                return (false, FormattableString.Invariant($"Results can be entered from the race start ({race.Date:d MMM yyyy, HH:mm} UTC) until 48 hours after it."));
             if (now - race.Date > EditWindow)
                 return (false, "The time for entering and changing results (48 hours after the race) has expired.");
-            return (true, $"Results can be changed until {race.Date.Add(EditWindow):d MMM yyyy, HH:mm} (UTC).");
+            return (true, FormattableString.Invariant($"Results can be changed until {race.Date.Add(EditWindow):d MMM yyyy, HH:mm} (UTC)."));
         }
 
         public async Task<List<DriverStandingResponse>> GetDriverStandingsBySeason(int seasonId)

@@ -6,7 +6,6 @@ import '../../core/formatters.dart';
 import '../../core/validators.dart';
 import '../../models/driver.dart';
 import '../../models/race.dart';
-import '../../models/reference.dart';
 import '../../models/result.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/admin/admin_page.dart';
@@ -27,8 +26,9 @@ class _ResultRow {
   _ResultRow({this.driverId, String time = '', this.fastestLap = false}) : time = TextEditingController(text: time);
 }
 
-/// Race classification entry. Results can be entered from the start of the race until 48 hours after it;
-/// the order of the rows is the finishing order, the team and points are filled in automatically.
+/// Race classification entry. The race list holds the upcoming races and the races that finished in the last 48 hours;
+/// results can be saved from the start of the race until 48 hours after it. The order of the rows is the finishing order,
+/// the team and points are filled in automatically.
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
 
@@ -40,8 +40,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
   final _results = ResultProvider();
   final _formKey = GlobalKey<FormState>();
 
-  List<Season>? _seasons;
-  int? _seasonId;
   List<Race>? _races;
   int? _raceId;
   RaceResults? _raceResults;
@@ -73,31 +71,17 @@ class _ResultsScreenState extends State<ResultsScreen> {
   }
 
   Future<void> _init() async {
-    setState(() => _error = null);
-    try {
-      final provider = SeasonProvider();
-      final seasons = await provider.getAll();
-      final current = await provider.getCurrent();
-      if (!mounted) return;
-      setState(() => _seasons = seasons);
-      final seasonId = current?.seasonID ?? (seasons.isEmpty ? null : seasons.last.seasonID);
-      if (seasonId != null) await _selectSeason(seasonId);
-    } catch (e) {
-      if (mounted) setState(() => _error = e);
-    }
-  }
-
-  Future<void> _selectSeason(int seasonId) async {
     setState(() {
-      _seasonId = seasonId;
+      _error = null;
       _races = null;
       _raceId = null;
       _raceResults = null;
     });
     try {
-      // Only races that have already started can have results.
-      final page = await RaceProvider().get(filter: {'SeasonID': seasonId, 'Upcoming': false, 'PageSize': 100});
-      final races = page.items..sort((a, b) => b.date.compareTo(a.date));
+      // Upcoming races and races that finished less than 48 hours ago, the earliest first
+      // (so a race whose results entry is open is selected by default).
+      final races = await RaceProvider().getAll(filter: {'DateFrom': DateTime.now().subtract(_editWindow)});
+      races.sort((a, b) => a.date.compareTo(b.date));
       if (!mounted) return;
       setState(() => _races = races);
       if (races.isNotEmpty) await _selectRace(races.first.raceID);
@@ -113,7 +97,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
       _serverErrors = {};
     });
     try {
-      final results = await Future.wait([_results.getRaceResults(raceId), DriverProvider().getBySeason(_seasonId!)]);
+      final seasonId = _races!.firstWhere((r) => r.raceID == raceId).seasonID;
+      final results = await Future.wait([_results.getRaceResults(raceId), DriverProvider().getBySeason(seasonId)]);
       if (!mounted || _raceId != raceId) return;
       _applyResults(results[0] as RaceResults, drivers: results[1] as List<Driver>);
     } catch (e) {
@@ -222,26 +207,15 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Widget _buildBody() {
     if (_error != null) return ErrorView(error: _error!, onRetry: _init);
-    final seasons = _seasons;
-    if (seasons == null) return const LoadingView();
-    if (seasons.isEmpty) return const EmptyView(message: 'No seasons yet.');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            SizedBox(
-              width: 200,
-              child: DropdownButtonFormField<int>(
-                initialValue: _seasonId,
-                decoration: const InputDecoration(labelText: 'Season'),
-                items: [for (final s in seasons) DropdownMenuItem(value: s.seasonID, child: Text('${s.year}'))],
-                onChanged: _saving ? null : (id) => _selectSeason(id!),
-              ),
-            ),
+            SizedBox(width: 560, child: _buildRaceDropdown()),
             const SizedBox(width: 12),
-            SizedBox(width: 460, child: _buildRaceDropdown()),
+            IconButton(tooltip: 'Refresh races', onPressed: _saving ? null : _init, icon: const Icon(Icons.refresh)),
           ],
         ),
         const SizedBox(height: 16),
@@ -260,16 +234,16 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
     final now = DateTime.now();
     return DropdownButtonFormField<int>(
-      key: ValueKey('race-$_seasonId'),
+      key: ValueKey('races-${races.length}-${races.firstOrNull?.raceID}'),
       initialValue: _raceId,
       isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Race (finished)'),
+      decoration: const InputDecoration(labelText: 'Race (upcoming or finished in the last 48 hours)'),
       items: [
         for (final r in races)
           DropdownMenuItem(
             value: r.raceID,
             child: Text(
-              '${r.raceName} · ${formatDate(r.date)}${now.difference(r.date) <= _editWindow ? '  (entry open)' : ''}',
+              '${r.raceName} · ${formatDateTime(r.date)}  ${r.date.isAfter(now) ? '(upcoming)' : '(entry open)'}',
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -280,18 +254,33 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
   Widget _buildRaceContent() {
     if (_races != null && _races!.isEmpty) {
-      return const EmptyView(message: 'No race has been held in this season yet.', icon: Icons.flag_outlined);
+      return const EmptyView(message: 'There are no upcoming races and no race finished in the last 48 hours.', icon: Icons.flag_outlined);
     }
     final raceResults = _raceResults;
     if (raceResults == null || _loadingRace) return const LoadingView();
+
+    // The entry window in local time; the API decides whether saving is allowed (CanEdit).
+    final upcoming = raceResults.raceDate.isAfter(DateTime.now());
+    final closesAt = formatDateTime(raceResults.raceDate.add(_editWindow));
+    final info = upcoming
+        ? 'This race has not started yet. Results can be entered from ${formatDateTime(raceResults.raceDate)} until $closesAt.'
+        : raceResults.canEdit
+        ? 'Results entry is open until $closesAt.'
+        : raceResults.editInfo;
 
     return Card(
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _EditInfoBanner(canEdit: raceResults.canEdit, info: raceResults.editInfo),
-          Expanded(child: raceResults.canEdit ? _buildEditor() : _buildReadOnly(raceResults)),
+          _EditInfoBanner(canEdit: raceResults.canEdit, upcoming: upcoming, info: info),
+          Expanded(
+            child: raceResults.canEdit
+                ? _buildEditor()
+                : upcoming
+                ? EmptyView(message: 'Results for ${raceResults.raceName} can be entered once the race has started.', icon: Icons.schedule)
+                : _buildReadOnly(raceResults),
+          ),
         ],
       ),
     );
@@ -518,19 +507,20 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
 class _EditInfoBanner extends StatelessWidget {
   final bool canEdit;
+  final bool upcoming;
   final String? info;
 
-  const _EditInfoBanner({required this.canEdit, required this.info});
+  const _EditInfoBanner({required this.canEdit, required this.upcoming, required this.info});
 
   @override
   Widget build(BuildContext context) {
-    final color = canEdit ? AppColors.success : AppColors.warning;
+    final color = canEdit ? AppColors.success : (upcoming ? Colors.blueGrey : AppColors.warning);
     return Container(
       color: color.withValues(alpha: 0.1),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Icon(canEdit ? Icons.edit_note : Icons.lock_clock, color: color),
+          Icon(canEdit ? Icons.edit_note : (upcoming ? Icons.schedule : Icons.lock_clock), color: color),
           const SizedBox(width: 12),
           Expanded(child: Text(info ?? (canEdit ? 'Results entry is open.' : 'Results can no longer be changed.'))),
         ],

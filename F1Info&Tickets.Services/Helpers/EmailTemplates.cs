@@ -15,7 +15,7 @@ namespace F1Info_Tickets.Services.Helpers
             var rows = new StringBuilder();
             foreach (var t in tickets)
             {
-                rows.Append($"<tr><td>{E(t.RaceName)}</td><td>{t.RaceDate:d MMM yyyy}</td><td>{E(t.TicketType)}</td>" +
+                rows.Append($"<tr><td>{E(t.RaceName)}</td><td>{t.RaceDate.ToString("d MMM yyyy", CultureInfo.InvariantCulture)}</td><td>{E(t.TicketType)}</td>" +
                             $"<td>{Money(t.Price)} {currency}</td><td><code>{E(t.QRCode)}</code></td></tr>");
             }
 
