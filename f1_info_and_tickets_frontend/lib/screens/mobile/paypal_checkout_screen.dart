@@ -2,10 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../api/providers.dart';
+import '../../core/api_exception.dart';
 import '../../widgets/feedback.dart';
 
+/// How the PayPal checkout ended; returned by [PayPalCheckoutScreen].
+sealed class PayPalOutcome {
+  const PayPalOutcome();
+}
+
+/// The order was captured and the tickets were created.
+class PayPalPaid extends PayPalOutcome {
+  const PayPalPaid();
+}
+
+/// The user left PayPal without paying.
+class PayPalCancelled extends PayPalOutcome {
+  const PayPalCancelled();
+}
+
+/// PayPal could not be opened or the payment could not be completed; [error] carries the server's message.
+class PayPalFailed extends PayPalOutcome {
+  final Object error;
+
+  const PayPalFailed(this.error);
+}
+
 /// PayPal approval page in a web view. When PayPal redirects to [returnUrl] the order is captured on the server;
-/// the screen closes with `true` after a successful payment and with `false` when the user cancels.
+/// the screen closes with a [PayPalOutcome].
 class PayPalCheckoutScreen extends StatefulWidget {
   // Never loaded: the web view intercepts these redirects.
   static const returnUrl = 'https://f1infotickets.app/paypal/return';
@@ -41,10 +64,17 @@ class _PayPalCheckoutScreenState extends State<PayPalCheckoutScreen> {
               return NavigationDecision.prevent;
             }
             if (request.url.startsWith(PayPalCheckoutScreen.cancelUrl)) {
-              Navigator.pop(context, false);
+              Navigator.pop(context, const PayPalCancelled());
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
+          },
+          onWebResourceError: (error) {
+            if (error.isForMainFrame != true || _capturing || !mounted) return;
+            Navigator.pop(
+              context,
+              PayPalFailed(ApiException('The PayPal page could not be opened. Check your internet connection and try again.')),
+            );
           },
         ),
       );
@@ -62,11 +92,10 @@ class _PayPalCheckoutScreenState extends State<PayPalCheckoutScreen> {
     setState(() => _capturing = true);
     try {
       await PaymentProvider().capture(widget.orderId);
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context, const PayPalPaid());
     } catch (e) {
-      if (!mounted) return;
-      showError(context, e);
-      Navigator.pop(context, false);
+      // The cart screen shows the message, so it is not lost when this screen closes.
+      if (mounted) Navigator.pop(context, PayPalFailed(e));
     }
   }
 
@@ -78,7 +107,7 @@ class _PayPalCheckoutScreenState extends State<PayPalCheckoutScreen> {
       confirmLabel: 'Leave',
       destructive: true,
     );
-    if (confirmed && mounted) Navigator.pop(context, false);
+    if (confirmed && mounted) Navigator.pop(context, const PayPalCancelled());
   }
 
   @override

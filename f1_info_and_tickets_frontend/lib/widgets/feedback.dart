@@ -3,37 +3,29 @@ import 'package:flutter/material.dart';
 import '../core/api_exception.dart';
 import '../theme/app_theme.dart';
 
-void showSuccess(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-      ),
-    );
-}
+void showSuccess(BuildContext context, String message) => _showSnack(context, Icons.check_circle, message, AppColors.success);
 
-void showError(BuildContext context, Object error) {
+/// Neutral message, e.g. when the user cancels something and nothing changed.
+void showInfo(BuildContext context, String message) => _showSnack(context, Icons.info_outline, message, AppColors.carbonLight);
+
+void showError(BuildContext context, Object error) =>
+    _showSnack(context, Icons.error_outline, errorMessage(error), AppColors.redDark, duration: const Duration(seconds: 5));
+
+void _showSnack(BuildContext context, IconData icon, String message, Color background, {Duration duration = const Duration(seconds: 4)}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white),
+            Icon(icon, color: Colors.white),
             const SizedBox(width: 10),
-            Expanded(child: Text(errorMessage(error))),
+            // The default snackbar text colour is meant for the theme's own background, so it is set explicitly.
+            Expanded(child: Text(message, style: const TextStyle(color: Colors.white))),
           ],
         ),
-        backgroundColor: AppColors.redDark,
-        duration: const Duration(seconds: 5),
+        backgroundColor: background,
+        duration: duration,
       ),
     );
 }

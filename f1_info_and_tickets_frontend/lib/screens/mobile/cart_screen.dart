@@ -62,7 +62,7 @@ class _CartScreenState extends State<CartScreen> {
     await _run(() async {
       final order = await PaymentProvider().create(returnUrl: PayPalCheckoutScreen.returnUrl, cancelUrl: PayPalCheckoutScreen.cancelUrl);
       if (!mounted) return;
-      final paid = await Navigator.push<bool>(
+      final outcome = await Navigator.push<PayPalOutcome>(
         context,
         MaterialPageRoute(
           builder: (_) => PayPalCheckoutScreen(approvalUrl: order.approvalUrl, orderId: order.providerOrderId),
@@ -71,14 +71,28 @@ class _CartScreenState extends State<CartScreen> {
       if (!mounted) return;
       await context.read<CartState>().load();
       if (!mounted) return;
-      if (paid == true) {
-        showSuccess(context, 'Payment completed. Your tickets are in My tickets.');
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MyTicketsScreen()));
-      } else {
-        showError(context, ApiException('The payment was cancelled. Your cart is unchanged.'));
+      switch (outcome ?? const PayPalCancelled()) {
+        case PayPalPaid():
+          showSuccess(context, 'Payment completed. Your tickets are in My tickets.');
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MyTicketsScreen()));
+        case PayPalCancelled():
+          showInfo(context, 'You left PayPal without paying. Your cart is unchanged.');
+        case PayPalFailed(:final error):
+          await _showPaymentFailed(error);
       }
     });
   }
+
+  /// A dialog instead of a snackbar, so the reason (e.g. the cart changed, PayPal declined) is not missed.
+  Future<void> _showPaymentFailed(Object error) => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.error_outline, color: AppColors.red, size: 36),
+      title: const Text('Payment failed'),
+      content: Text('${errorMessage(error)}\n\nNo tickets were issued. Check your cart and try again.'),
+      actions: [ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
