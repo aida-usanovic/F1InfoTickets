@@ -17,7 +17,7 @@ import '../../widgets/state_views.dart';
 import 'report_pdf.dart';
 
 /// Ticket sales, race attendance and user activity, filtered by season and purchase period.
-/// The same data can be downloaded as a PDF or printed.
+/// Two separate PDF reports can be downloaded or printed: sales and attendance (first two tabs) and user activity.
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -30,7 +30,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Season? _season;
   DateTimeRange? _period;
   late Future<ReportData> _future = _load();
-  bool _exporting = false;
+  ReportKind? _exporting;
 
   Future<ReportData> _load() async {
     final seasonId = _season?.seasonID;
@@ -75,21 +75,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
     _reload();
   }
 
-  Future<void> _export({required bool print}) async {
-    setState(() => _exporting = true);
+  Future<void> _export(ReportKind kind, {required bool print}) async {
+    setState(() => _exporting = kind);
     try {
       final data = await _future;
-      final bytes = await ReportPdf.build(data, filterLabel: _filterLabel);
+      final bytes = await ReportPdf.build(kind, data, filterLabel: _filterLabel);
       if (!mounted) return;
       if (print) {
-        final printed = await Printing.layoutPdf(name: 'F1 report', onLayout: (_) async => bytes);
-        if (printed && mounted) showSuccess(context, 'The report was sent to the printer.');
+        final printed = await Printing.layoutPdf(name: kind.title, onLayout: (_) async => bytes);
+        if (printed && mounted) showSuccess(context, '${kind.title} was sent to the printer.');
         return;
       }
       final now = DateTime.now();
       final stamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final location = await getSaveLocation(
-        suggestedName: 'f1-report-$stamp.pdf',
+        suggestedName: '${kind.fileName}-$stamp.pdf',
         acceptedTypeGroups: const [
           XTypeGroup(label: 'PDF', extensions: ['pdf']),
         ],
@@ -97,12 +97,51 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (location == null) return;
       final path = location.path.toLowerCase().endsWith('.pdf') ? location.path : '${location.path}.pdf';
       await File(path).writeAsBytes(bytes);
-      if (mounted) showSuccess(context, 'The report was saved: $path');
+      if (mounted) showSuccess(context, '${kind.title} was saved: $path');
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
-      if (mounted) setState(() => _exporting = false);
+      if (mounted) setState(() => _exporting = null);
     }
+  }
+
+  /// Report title with its own download and print buttons, shown above the tab content.
+  Widget _withReportBar(ReportKind kind, Widget tab) {
+    final busy = _exporting != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              children: [
+                const Icon(Icons.picture_as_pdf_outlined, color: AppColors.red),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(kind.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : () => _export(kind, print: false),
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Download PDF'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: busy ? null : () => _export(kind, print: true),
+                  icon: _exporting == kind
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.print_outlined),
+                  label: const Text('Print'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(child: tab),
+      ],
+    );
   }
 
   @override
@@ -111,19 +150,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       length: 3,
       child: AdminPage(
         title: 'Reports',
-        subtitle: 'Ticket sales, race attendance and user activity',
-        actions: [
-          OutlinedButton.icon(
-            onPressed: _exporting ? null : () => _export(print: false),
-            icon: const Icon(Icons.download_outlined),
-            label: const Text('Download PDF'),
-          ),
-          ElevatedButton.icon(
-            onPressed: _exporting ? null : () => _export(print: true),
-            icon: const Icon(Icons.print_outlined),
-            label: const Text('Print'),
-          ),
-        ],
+        subtitle: 'Two PDF reports: ticket sales and attendance, and user activity',
         bottom: const TabBar(
           isScrollable: true,
           tabAlignment: TabAlignment.start,
@@ -179,7 +206,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (snapshot.hasError) return ErrorView(error: snapshot.error!, onRetry: _reload);
                   final data = snapshot.data;
                   if (data == null || snapshot.connectionState != ConnectionState.done) return const LoadingView();
-                  return TabBarView(children: [_SalesTab(data), _AttendanceTab(data.attendance), _ActivityTab(data.activity)]);
+                  return TabBarView(
+                    children: [
+                      _withReportBar(ReportKind.salesAndAttendance, _SalesTab(data)),
+                      _withReportBar(ReportKind.salesAndAttendance, _AttendanceTab(data.attendance)),
+                      _withReportBar(ReportKind.userActivity, _ActivityTab(data.activity)),
+                    ],
+                  );
                 },
               ),
             ),
@@ -204,7 +237,9 @@ class _SalesTab extends StatelessWidget {
     final totalRevenue = data.sales.fold<double>(0, (sum, s) => sum + s.totalRevenue);
     if (totalSold == 0) return const EmptyView(message: 'No tickets sold for the selected filter.', icon: Icons.bar_chart);
 
-    final maxRevenue = sales.map((s) => s.totalRevenue).reduce((a, b) => a > b ? a : b);
+    // The chart shows the ten races with the highest revenue so the labels stay readable; the PDF lists all races.
+    final top = ([...sales]..sort((a, b) => b.totalRevenue.compareTo(a.totalRevenue))).take(10).toList();
+    final maxRevenue = top.first.totalRevenue;
     return ListView(
       children: [
         Row(
@@ -223,7 +258,7 @@ class _SalesTab extends StatelessWidget {
             Expanded(
               flex: 3,
               child: _ChartCard(
-                title: 'Revenue per race',
+                title: 'Revenue per race (top 10)',
                 child: BarChart(
                   BarChartData(
                     maxY: maxRevenue * 1.15,
@@ -232,7 +267,7 @@ class _SalesTab extends StatelessWidget {
                     barTouchData: BarTouchData(
                       touchTooltipData: BarTouchTooltipData(
                         getTooltipItem: (group, _, rod, _) => BarTooltipItem(
-                          '${sales[group.x].raceName}\n${formatMoney(rod.toY)}',
+                          '${top[group.x].raceName}\n${formatMoney(rod.toY)}',
                           const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -253,18 +288,18 @@ class _SalesTab extends StatelessWidget {
                           reservedSize: 36,
                           getTitlesWidget: (value, meta) => Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: Text(_shortName(sales[value.toInt()].raceName), style: const TextStyle(fontSize: 10)),
+                            child: Text(_shortName(top[value.toInt()].raceName), style: const TextStyle(fontSize: 10)),
                           ),
                         ),
                       ),
                     ),
                     barGroups: [
-                      for (var i = 0; i < sales.length; i++)
+                      for (var i = 0; i < top.length; i++)
                         BarChartGroupData(
                           x: i,
                           barRods: [
                             BarChartRodData(
-                              toY: sales[i].totalRevenue,
+                              toY: top[i].totalRevenue,
                               color: AppColors.red,
                               width: 16,
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
@@ -338,7 +373,7 @@ class _SalesTab extends StatelessWidget {
 
   static String _shortName(String raceName) {
     final name = raceName.replaceAll('Grand Prix', '').replaceAll('GP', '').trim();
-    return name.length > 8 ? '${name.substring(0, 7)}.' : name;
+    return name.length > 12 ? '${name.substring(0, 11)}.' : name;
   }
 }
 

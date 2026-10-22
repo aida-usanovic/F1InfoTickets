@@ -7,7 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../core/formatters.dart';
 import '../../models/analytics.dart';
 
-/// Data shown on the reports screen and printed in the PDF.
+/// Data shown on the reports screen and printed in the PDF reports.
 class ReportData {
   final List<RaceSales> sales;
   final List<TicketTypeSales> typeSales;
@@ -17,24 +17,31 @@ class ReportData {
   ReportData({required this.sales, required this.typeSales, required this.attendance, required this.activity});
 }
 
-/// Builds the printable report (ticket sales, attendance, user activity) for the selected filters.
+/// The two PDF reports of the desktop app; both use the season and period filters of the reports screen.
+enum ReportKind {
+  salesAndAttendance('Ticket sales and attendance report', 'f1-sales-attendance-report'),
+  userActivity('User activity report', 'f1-user-activity-report');
+
+  final String title;
+  final String fileName;
+
+  const ReportKind(this.title, this.fileName);
+}
+
+/// Builds a printable PDF report for the selected filters.
 class ReportPdf {
   static const _red = PdfColor.fromInt(0xFFE10600);
   static const _dark = PdfColor.fromInt(0xFF2B2B38);
 
-  static Future<Uint8List> build(ReportData data, {required String filterLabel}) async {
+  static Future<Uint8List> build(ReportKind kind, ReportData data, {required String filterLabel}) async {
     // Roboto supports the Bosnian letters (č, ć, đ, š, ž) and the euro sign.
     final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/Roboto-Regular.ttf'));
     final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/Roboto-Bold.ttf'));
     final doc = pw.Document(
-      title: 'F1 Info & Tickets report',
+      title: 'F1 Info & Tickets - ${kind.title}',
       author: 'F1 Info & Tickets',
       theme: pw.ThemeData.withFont(base: regular, bold: bold),
     );
-
-    final totalSold = data.sales.fold<int>(0, (sum, s) => sum + s.ticketsSold);
-    final totalRevenue = data.sales.fold<double>(0, (sum, s) => sum + s.totalRevenue);
-    final activity = data.activity;
 
     doc.addPage(
       pw.MultiPage(
@@ -60,7 +67,7 @@ class ReportPdf {
                   ],
                 ),
               ),
-              pw.Text('Sales and attendance report', style: const pw.TextStyle(fontSize: 10)),
+              pw.Text(kind.title, style: const pw.TextStyle(fontSize: 10)),
             ],
           ),
         ),
@@ -73,73 +80,93 @@ class ReportPdf {
         ),
         build: (context) => [
           pw.SizedBox(height: 12),
+          pw.Text(
+            kind.title,
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _dark),
+          ),
+          pw.SizedBox(height: 4),
           pw.Text('Filter: $filterLabel', style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey800)),
           pw.SizedBox(height: 12),
-          _summary([
-            ('Sold tickets', formatNumber(totalSold)),
-            ('Revenue', formatMoney(totalRevenue)),
-            ('Active buyers', formatNumber(activity.activeBuyers)),
-            ('Race views', formatNumber(activity.raceViews)),
-          ]),
-          _heading('Ticket sales per race'),
-          _table(
-            ['Race', 'Date', 'Sold tickets', 'Revenue'],
-            [
-              for (final s in data.sales) [s.raceName, formatDate(s.raceDate), formatNumber(s.ticketsSold), formatMoney(s.totalRevenue)],
-            ],
-            numericFrom: 2,
-          ),
-          _heading('Sales by ticket type'),
-          _table(
-            ['Ticket type', 'Sold tickets', 'Revenue'],
-            [
-              for (final t in data.typeSales) [t.ticketType, formatNumber(t.ticketsSold), formatMoney(t.totalRevenue)],
-            ],
-            numericFrom: 1,
-          ),
-          _heading('Race attendance'),
-          _table(
-            ['Race', 'Date', 'Capacity', 'Sold', 'Occupancy'],
-            [
-              for (final a in data.attendance)
-                [
-                  a.raceName,
-                  formatDate(a.raceDate),
-                  formatNumber(a.capacity),
-                  formatNumber(a.ticketsSold),
-                  '${a.occupancyPercent.toStringAsFixed(1)} %',
-                ],
-            ],
-            numericFrom: 2,
-          ),
-          _heading('User activity'),
-          _summary([
-            ('Registered users', formatNumber(activity.totalUsersRegistered)),
-            ('Active buyers', formatNumber(activity.activeBuyers)),
-            ('Tickets purchased', formatNumber(activity.totalTicketsPurchased)),
-            ('Revenue', formatMoney(activity.totalRevenue)),
-          ]),
-          pw.SizedBox(height: 10),
-          _table(
-            ['Customer', 'Username', 'Tickets', 'Spent', 'Last purchase', 'Views'],
-            [
-              for (final c in activity.topCustomers)
-                [
-                  c.fullName,
-                  c.username,
-                  formatNumber(c.ticketsPurchased),
-                  formatMoney(c.totalSpent),
-                  formatDate(c.lastPurchase),
-                  formatNumber(c.raceViews),
-                ],
-            ],
-            numericFrom: 2,
-          ),
+          ...switch (kind) {
+            ReportKind.salesAndAttendance => _salesAndAttendance(data),
+            ReportKind.userActivity => _userActivity(data.activity),
+          },
         ],
       ),
     );
     return doc.save();
   }
+
+  static List<pw.Widget> _salesAndAttendance(ReportData data) {
+    final totalSold = data.sales.fold<int>(0, (sum, s) => sum + s.ticketsSold);
+    final totalRevenue = data.sales.fold<double>(0, (sum, s) => sum + s.totalRevenue);
+    final capacity = data.attendance.fold<int>(0, (sum, a) => sum + a.capacity);
+    return [
+      _summary([
+        ('Sold tickets', formatNumber(totalSold)),
+        ('Revenue', formatMoney(totalRevenue)),
+        ('Races with sales', formatNumber(data.sales.where((s) => s.ticketsSold > 0).length)),
+        ('Seats offered', formatNumber(capacity)),
+      ]),
+      _heading('Ticket sales per race'),
+      _table(
+        ['Race', 'Date', 'Sold tickets', 'Revenue'],
+        [
+          for (final s in data.sales) [s.raceName, formatDate(s.raceDate), formatNumber(s.ticketsSold), formatMoney(s.totalRevenue)],
+        ],
+        numericFrom: 2,
+      ),
+      _heading('Sales by ticket type'),
+      _table(
+        ['Ticket type', 'Sold tickets', 'Revenue'],
+        [
+          for (final t in data.typeSales) [t.ticketType, formatNumber(t.ticketsSold), formatMoney(t.totalRevenue)],
+        ],
+        numericFrom: 1,
+      ),
+      _heading('Race attendance'),
+      _table(
+        ['Race', 'Date', 'Capacity', 'Sold', 'Occupancy'],
+        [
+          for (final a in data.attendance)
+            [
+              a.raceName,
+              formatDate(a.raceDate),
+              formatNumber(a.capacity),
+              formatNumber(a.ticketsSold),
+              '${a.occupancyPercent.toStringAsFixed(1)} %',
+            ],
+        ],
+        numericFrom: 2,
+      ),
+    ];
+  }
+
+  static List<pw.Widget> _userActivity(UserActivity activity) => [
+    _summary([
+      ('Registered users', formatNumber(activity.totalUsersRegistered)),
+      ('Active buyers', formatNumber(activity.activeBuyers)),
+      ('Tickets purchased', formatNumber(activity.totalTicketsPurchased)),
+      ('Revenue', formatMoney(activity.totalRevenue)),
+      ('Race views', formatNumber(activity.raceViews)),
+    ]),
+    _heading('Top customers'),
+    _table(
+      ['Customer', 'Username', 'Tickets', 'Spent', 'Last purchase', 'Views'],
+      [
+        for (final c in activity.topCustomers)
+          [
+            c.fullName,
+            c.username,
+            formatNumber(c.ticketsPurchased),
+            formatMoney(c.totalSpent),
+            formatDate(c.lastPurchase),
+            formatNumber(c.raceViews),
+          ],
+      ],
+      numericFrom: 2,
+    ),
+  ];
 
   static pw.Widget _heading(String text) => pw.Padding(
     padding: const pw.EdgeInsets.only(top: 18, bottom: 8),
