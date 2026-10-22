@@ -25,6 +25,14 @@ namespace F1Info_Tickets.WebAPI.Middleware
             {
                 await WriteResponse(context, HttpStatusCode.NotFound, ex.Message);
             }
+            catch (BusinessException ex) when (ex.Field != null)
+            {
+                // Same shape as model validation errors, so the client shows the message under the field.
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                var errors = new Dictionary<string, string[]> { [ex.Field] = [ex.Message] };
+                await context.Response.WriteAsync(JsonSerializer.Serialize(new { message = ex.Message, errors }));
+            }
             catch (BusinessException ex)
             {
                 await WriteResponse(context, HttpStatusCode.BadRequest, ex.Message);

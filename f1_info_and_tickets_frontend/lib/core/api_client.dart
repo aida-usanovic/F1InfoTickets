@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
 import 'api_exception.dart';
@@ -36,10 +37,19 @@ class ApiClient {
       fields.forEach((key, value) {
         if (value != null) request.fields[key] = _queryValue(value);
       });
-      if (filePath != null) request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+      if (filePath != null) {
+        request.files.add(await http.MultipartFile.fromPath(fileField, filePath, contentType: _imageType(filePath)));
+      }
       return http.Response.fromStream(await request.send());
     });
   }
+
+  /// The server accepts only JPG and PNG and checks the declared type, so it is set from the extension.
+  static MediaType? _imageType(String path) => switch (path.split('.').last.toLowerCase()) {
+    'png' => MediaType('image', 'png'),
+    'jpg' || 'jpeg' => MediaType('image', 'jpeg'),
+    _ => null,
+  };
 
   Map<String, String> _headers() => {
     'Content-Type': 'application/json',

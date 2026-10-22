@@ -34,7 +34,7 @@ class _ImagePickFieldState extends State<ImagePickField> {
   String? _path;
 
   Future<void> _pick() async {
-    const types = XTypeGroup(label: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp']);
+    const types = XTypeGroup(label: 'Images', extensions: ['jpg', 'jpeg', 'png'], mimeTypes: ['image/jpeg', 'image/png']);
     final file = await openFile(acceptedTypeGroups: [types]);
     if (file == null || !mounted) return;
     if (await File(file.path).length() > ImagePickField.maxBytes) {
@@ -69,7 +69,7 @@ class _ImagePickFieldState extends State<ImagePickField> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _path != null ? File(_path!).uri.pathSegments.last : 'JPG, PNG or WEBP, up to 5 MB.',
+                  _path != null ? File(_path!).uri.pathSegments.last : 'JPG or PNG, up to 5 MB.',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
