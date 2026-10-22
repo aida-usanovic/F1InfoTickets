@@ -56,6 +56,15 @@ namespace F1Info_Tickets.Services.Services
             var sold = await _context.Tickets.CountAsync(t => t.RaceTicketCategoryID == entity.RaceTicketCategoryID && t.Status != TicketStatus.Refunded);
             if (request.Capacity < sold)
                 throw new BusinessException($"Capacity cannot be lower than the number of tickets already sold ({sold}).");
+
+            // The entity already holds the new values; the original ones decide whether the offer is moved.
+            var entry = _context.Entry(entity);
+            var raceChanged = entry.Property(x => x.RaceID).OriginalValue != request.RaceID;
+            var typeChanged = entry.Property(x => x.TicketTypeID).OriginalValue != request.TicketTypeID;
+            if ((raceChanged || typeChanged) && sold > 0)
+                throw new BusinessException($"{sold} ticket(s) of this offer are already sold, so its race and ticket type cannot be changed. You can still change the price and capacity.");
+            if (raceChanged && !await _context.Races.AnyAsync(r => r.RaceID == request.RaceID && r.Date > DateTime.UtcNow))
+                throw new BusinessException("Tickets can only be offered for upcoming races.");
         }
     }
 }

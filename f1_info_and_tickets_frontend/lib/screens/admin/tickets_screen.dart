@@ -266,7 +266,7 @@ class _TicketOffersTabState extends State<_TicketOffersTab> with AutomaticKeepAl
     super.build(context);
     return PagedTable<RaceTicketCategory>(
       controller: _table,
-      load: (query) => _provider.get(filter: {...query, 'TicketTypeID': _ticketTypeId, 'Upcoming': _upcomingOnly ? true : null}),
+      load: (query) => _provider.get(filter: {...query, 'TicketTypeID': _ticketTypeId, 'UpcomingOnly': _upcomingOnly ? true : null}),
       searchHint: 'Search by race or ticket type',
       emptyMessage: 'No ticket offers.',
       filters: [
@@ -334,6 +334,9 @@ class _TicketOfferFormDialogState extends State<TicketOfferFormDialog> with Crud
 
   bool get _isEdit => widget.category != null;
 
+  /// Sold tickets belong to this race and ticket type, so only price and capacity can change (the server checks the same).
+  bool get _hasSales => (widget.category?.sold ?? 0) > 0;
+
   @override
   void dispose() {
     _price.dispose();
@@ -372,6 +375,7 @@ class _TicketOfferFormDialogState extends State<TicketOfferFormDialog> with Crud
           labelOf: (r) => '${r.raceName} · ${formatDate(r.date)}',
           requiredMessage: 'Select an upcoming race.',
           forceErrorText: serverError('raceID'),
+          enabled: !_hasSales,
           onChanged: (r) => _raceId = r?.raceID,
         ),
         AsyncDropdown(
@@ -382,8 +386,15 @@ class _TicketOfferFormDialogState extends State<TicketOfferFormDialog> with Crud
           labelOf: (t) => t.name,
           requiredMessage: 'Select a ticket type.',
           forceErrorText: serverError('ticketTypeID'),
+          enabled: !_hasSales,
           onChanged: (t) => _ticketTypeId = t?.ticketTypeID,
         ),
+        if (_hasSales)
+          Text(
+            '${widget.category!.sold} ticket(s) are already sold, so the race and ticket type cannot be changed. '
+            'Capacity cannot be lower than ${widget.category!.sold}.',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
         FormRow(
           children: [
             TextFormField(

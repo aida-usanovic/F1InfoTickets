@@ -18,6 +18,7 @@ class Race {
   final double circuitLength;
   final String? imageUrl;
   final double? minTicketPrice;
+  final bool hasResults;
   final String? recommendationReason;
 
   /// Recommendations only: the ticket type the user buys most often, offered for this race.
@@ -43,6 +44,7 @@ class Race {
     required this.circuitLength,
     this.imageUrl,
     this.minTicketPrice,
+    this.hasResults = false,
     this.recommendationReason,
     this.recommendedTicketTypeID,
     this.recommendedTicketType,
@@ -69,6 +71,7 @@ class Race {
     circuitLength: toDouble(json['circuitLength']),
     imageUrl: json['imageUrl'],
     minTicketPrice: json['minTicketPrice'] == null ? null : toDouble(json['minTicketPrice']),
+    hasResults: json['hasResults'] ?? false,
     recommendationReason: json['recommendationReason'],
     recommendedTicketTypeID: json['recommendedTicketTypeID'],
     recommendedTicketType: json['recommendedTicketType'],

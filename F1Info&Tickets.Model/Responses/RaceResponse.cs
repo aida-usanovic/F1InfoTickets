@@ -20,6 +20,8 @@
         public double CircuitLength { get; set; }
         public string? ImageUrl { get; set; }
         public decimal? MinTicketPrice { get; set; }
+        // Set by RaceService on the race list and details: results are entered, so the date is limited.
+        public bool HasResults { get; set; }
         public string? RecommendationReason { get; set; }
         // Set only on recommendations: the ticket type the user buys most often, if this race still offers it.
         public int? RecommendedTicketTypeID { get; set; }

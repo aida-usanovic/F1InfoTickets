@@ -121,6 +121,9 @@ class _RaceFormDialogState extends State<RaceFormDialog> with CrudFormMixin {
 
   bool get _isEdit => widget.race != null;
 
+  /// With results entered, the race must stay a finished race of its season (the server checks the same).
+  bool get _dateLocked => widget.race?.hasResults ?? false;
+
   @override
   void dispose() {
     _name.dispose();
@@ -133,6 +136,12 @@ class _RaceFormDialogState extends State<RaceFormDialog> with CrudFormMixin {
     final saved = _isEdit ? await provider.update(widget.race!.raceID, request) : await provider.insert(request);
     return _isEdit ? 'Race ${saved.raceName} was updated.' : 'Race ${saved.raceName} (${formatDate(saved.date)}) was added.';
   });
+
+  static DateTime _lastAllowedDate(Race race) {
+    final now = DateTime.now();
+    final seasonEnd = DateTime(race.date.year, 12, 31);
+    return now.isBefore(seasonEnd) ? now : seasonEnd;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -171,12 +180,22 @@ class _RaceFormDialogState extends State<RaceFormDialog> with CrudFormMixin {
         DateTimeFormField(
           label: 'Start date and time (local time)',
           initialValue: _date,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(DateTime.now().year + 3, 12, 31),
-          validator: (v) => v == null ? 'Select the race start date and time.' : null,
+          firstDate: _dateLocked ? DateTime(race!.date.year) : DateTime(2000),
+          lastDate: _dateLocked ? _lastAllowedDate(race!) : DateTime(DateTime.now().year + 3, 12, 31),
+          validator: (v) {
+            if (v == null) return 'Select the race start date and time.';
+            if (_dateLocked && v.year != race!.date.year) return 'The race must stay in the ${race.date.year} season.';
+            if (_dateLocked && v.isAfter(DateTime.now())) return 'A race with results cannot be moved into the future.';
+            return null;
+          },
           forceErrorText: serverError('date'),
           onChanged: (v) => _date = v,
         ),
+        if (_dateLocked)
+          Text(
+            'Results are entered for this race, so its date can only be corrected within the ${race!.date.year} season and not into the future.',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
       ],
     );
   }

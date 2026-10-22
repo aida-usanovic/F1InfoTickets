@@ -65,7 +65,39 @@ namespace F1Info_Tickets.Services.Services
         protected override async Task BeforeUpdate(Race entity, RaceUpdateRequest request)
         {
             await EnsureCircuitExists(request.CircuitID);
+
+            // A race with results stays a finished race of its season, so the standings of that season stay correct.
+            var originalDate = _context.Entry(entity).Property(x => x.Date).OriginalValue;
+            if (originalDate != request.Date && await _context.Results.AnyAsync(r => r.RaceID == entity.RaceID))
+            {
+                if (request.Date.Year != originalDate.Year)
+                    throw new BusinessException($"Results are already entered for this race, so it must stay in the {originalDate.Year} season.");
+                if (request.Date > DateTime.UtcNow)
+                    throw new BusinessException("Results are already entered for this race, so its date cannot be moved into the future.");
+            }
+
             entity.SeasonID = (await _seasonService.GetOrCreateSeasonAsync(request.Date.Year)).SeasonID;
+        }
+
+        public override async Task<PagedResult<RaceResponse>> GetAsync(RaceSearchObject search)
+        {
+            var result = await base.GetAsync(search);
+            await FillHasResultsAsync(result.Items);
+            return result;
+        }
+
+        public override async Task<RaceResponse?> GetByIdAsync(int id)
+        {
+            var race = await base.GetByIdAsync(id);
+            if (race != null) await FillHasResultsAsync([race]);
+            return race;
+        }
+
+        private async Task FillHasResultsAsync(IReadOnlyCollection<RaceResponse> races)
+        {
+            var ids = races.Select(r => r.RaceID).ToList();
+            var withResults = await _context.Results.Where(r => ids.Contains(r.RaceID)).Select(r => r.RaceID).Distinct().ToListAsync();
+            foreach (var race in races) race.HasResults = withResults.Contains(race.RaceID);
         }
 
         public async Task<List<RaceResponse>> GetRacesBySeason(int seasonId)
@@ -98,7 +130,7 @@ namespace F1Info_Tickets.Services.Services
         private async Task EnsureCircuitExists(int circuitId)
         {
             if (!await _context.Circuits.AnyAsync(c => c.CircuitID == circuitId))
-                throw new BusinessException("Odabrana staza ne postoji.");
+                throw new BusinessException("The selected circuit does not exist.");
         }
     }
 }
