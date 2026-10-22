@@ -8,6 +8,7 @@ import '../../state/cart_state.dart';
 import '../../state/notification_state.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/feedback.dart';
+import '../../widgets/mobile/profile_avatar.dart';
 import '../../widgets/state_views.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
@@ -66,14 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 34,
-                    backgroundColor: AppColors.red,
-                    child: Text(
-                      user.initials,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
-                    ),
-                  ),
+                  ProfileAvatar(user: user),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(

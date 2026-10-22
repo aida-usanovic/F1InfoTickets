@@ -4,6 +4,7 @@ using F1Info_Tickets.Model.SearchObjects;
 using F1Info_Tickets.Services.BaseServices;
 using F1Info_Tickets.Services.Database;
 using F1Info_Tickets.Services.Exceptions;
+using F1Info_Tickets.Services.Helpers;
 using F1Info_Tickets.Services.Interfaces;
 using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
@@ -121,6 +122,8 @@ namespace F1Info_Tickets.Services.Services
             user.Email = request.Email;
             user.Phone = request.Phone;
             user.BirthDate = request.BirthDate;
+            if (request.Image != null)
+                user.PhotoUrl = await FileHelper.SaveImageAsync(request.Image, "users");
 
             await SaveChangesAsync();
             return (await GetByIdAsync(userId))!;

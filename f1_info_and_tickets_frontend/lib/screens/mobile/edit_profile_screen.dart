@@ -1,11 +1,18 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../api/providers.dart';
+import '../../core/api_exception.dart';
 import '../../core/json.dart';
 import '../../core/validators.dart';
 import '../../models/user.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/feedback.dart';
 import '../../widgets/form_fields.dart';
 import '../../widgets/form_submit.dart';
+import '../../widgets/mobile/profile_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final User user;
@@ -31,16 +38,80 @@ class _EditProfileScreenState extends State<EditProfileScreen> with CrudFormMixi
     super.dispose();
   }
 
+  static const _maxImageBytes = 5 * 1024 * 1024;
+
+  /// Newly picked photo; null keeps the current one.
+  String? _imagePath;
+
+  Future<void> _pickPhoto() async {
+    const types = XTypeGroup(label: 'Images', extensions: ['jpg', 'jpeg', 'png'], mimeTypes: ['image/jpeg', 'image/png']);
+    final file = await openFile(acceptedTypeGroups: [types]);
+    if (file == null || !mounted) return;
+    if (await File(file.path).length() > _maxImageBytes) {
+      if (mounted) showError(context, ApiException('The image is too large. Select an image up to 5 MB.'));
+      return;
+    }
+    setState(() => _imagePath = file.path);
+  }
+
   Future<void> _save() => submit(() async {
     await ProfileProvider().update({
-      'firstName': _firstName.text.trim(),
-      'lastName': _lastName.text.trim(),
-      'email': _email.text.trim(),
-      'phone': _phone.text.trim(),
-      'birthDate': dateOnly(_birthDate),
-    });
-    return 'Your profile was updated.';
+      'FirstName': _firstName.text.trim(),
+      'LastName': _lastName.text.trim(),
+      'Email': _email.text.trim(),
+      'Phone': _phone.text.trim(),
+      'BirthDate': dateOnly(_birthDate),
+    }, imagePath: _imagePath);
+    return _imagePath == null ? 'Your profile was updated.' : 'Your profile and photo were updated.';
   });
+
+  /// Current photo and, after picking, the new one next to it.
+  Widget _buildPhoto() {
+    Widget labelled(String label, Widget avatar) => Column(
+      children: [
+        avatar,
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+      ],
+    );
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            labelled('Current photo', ProfileAvatar(user: widget.user, radius: 44)),
+            if (_imagePath != null) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(Icons.arrow_forward, color: AppColors.muted),
+              ),
+              labelled('New photo', ProfileAvatar(user: widget.user, radius: 44, filePath: _imagePath)),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: saving ? null : _pickPhoto,
+              icon: const Icon(Icons.photo_library_outlined),
+              label: Text(widget.user.photoUrl == null && _imagePath == null ? 'Add photo' : 'Choose another photo'),
+            ),
+            if (_imagePath != null)
+              TextButton(onPressed: saving ? null : () => setState(() => _imagePath = null), child: const Text('Keep current photo')),
+          ],
+        ),
+        const Text('JPG or PNG, up to 5 MB.', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+        if (serverError('image') != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(serverError('image')!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+          ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +124,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> with CrudFormMixi
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            _buildPhoto(),
+            const SizedBox(height: 20),
             TextFormField(
               controller: _firstName,
               textCapitalization: TextCapitalization.words,

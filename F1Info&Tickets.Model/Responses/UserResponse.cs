@@ -11,5 +11,6 @@
         public DateTime BirthDate { get; set; }
         public int RoleID { get; set; }
         public string? RoleName { get; set; }
+        public string? PhotoUrl { get; set; }
     }
 }

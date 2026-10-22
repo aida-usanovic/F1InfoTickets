@@ -28,6 +28,7 @@ class User {
   final DateTime birthDate;
   final int roleID;
   final String? roleName;
+  final String? photoUrl;
 
   User({
     required this.userID,
@@ -39,6 +40,7 @@ class User {
     required this.birthDate,
     required this.roleID,
     this.roleName,
+    this.photoUrl,
   });
 
   String get fullName => '$firstName $lastName';
@@ -54,6 +56,7 @@ class User {
     birthDate: parseDate(json['birthDate']),
     roleID: json['roleID'],
     roleName: json['roleName'],
+    photoUrl: json['photoUrl'],
   );
 }
 

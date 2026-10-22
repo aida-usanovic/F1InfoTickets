@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace F1Info_Tickets.Model.Requests
 {
@@ -22,5 +23,8 @@ namespace F1Info_Tickets.Model.Requests
         public string Phone { get; set; } = string.Empty;
 
         public DateTime BirthDate { get; set; }
+
+        // Optional new profile photo (sent as multipart form data); checked like driver and team images.
+        public IFormFile? Image { get; set; }
     }
 }

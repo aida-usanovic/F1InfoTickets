@@ -38,6 +38,10 @@ namespace F1Info_Tickets.Services.Database
         [Required]
         public string PasswordHash { get; set; }
 
+        // Profile photo uploaded from the mobile app (path under /images/users).
+        [MaxLength(255)]
+        public string? PhotoUrl { get; set; }
+
         public ICollection<UserRole> UserRoles { get; set; }
         public ICollection<Payment> Payments { get; set; }
         public ICollection<Ticket> Tickets { get; set; }

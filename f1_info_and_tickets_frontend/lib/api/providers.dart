@@ -179,7 +179,10 @@ class ProfileProvider {
   final _api = BaseApi.api;
 
   Future<User> get() async => User.fromJson(await _api.get('Profile'));
-  Future<User> update(Map<String, dynamic> request) async => User.fromJson(await _api.put('Profile', body: request));
+
+  /// Multipart, because the request can contain a new profile photo ([imagePath]).
+  Future<User> update(Map<String, dynamic> fields, {String? imagePath}) async =>
+      User.fromJson(await _api.multipart('PUT', 'Profile', fields, filePath: imagePath));
   Future<void> changePassword(Map<String, dynamic> request) => _api.put('Profile/password', body: request);
 }
 

@@ -27,7 +27,8 @@ namespace F1Info_Tickets.WebAPI.Controllers
         }
 
         [HttpPut]
-        public async Task<ActionResult<UserResponse>> Update([FromBody] ProfileUpdateRequest request)
+        // Multipart form, because the request can contain a new profile photo.
+        public async Task<ActionResult<UserResponse>> Update([FromForm] ProfileUpdateRequest request)
         {
             return Ok(await _userService.UpdateProfileAsync(GetCurrentUserId(), request));
         }

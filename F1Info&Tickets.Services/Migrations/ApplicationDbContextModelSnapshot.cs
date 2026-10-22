@@ -800,6 +800,10 @@ namespace F1Info_Tickets.Services.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
