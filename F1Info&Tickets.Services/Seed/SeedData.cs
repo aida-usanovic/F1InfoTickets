@@ -115,18 +115,18 @@ namespace F1Info_Tickets.Services.Seed
 
         private static async Task<Dictionary<string, Team>> SeedTeamsAsync(ApplicationDbContext context, ReferenceData reference)
         {
-            var teamData = new (string Name, string Base, string Principal, string? Logo)[]
+            var teamData = new (string Name, string Base, string Principal, string Logo)[]
             {
-                ("McLaren", "Woking", "Andrea Stella", null),
+                ("McLaren", "Woking", "Andrea Stella", "/Images/Teams/mclaren.png"),
                 ("Ferrari", "Maranello", "Frédéric Vasseur", "/Images/Teams/ferrari.png"),
                 ("Red Bull Racing", "Milton Keynes", "Laurent Mekies", "/Images/Teams/redbull.jpg"),
                 ("Mercedes", "Brackley", "Toto Wolff", "/Images/Teams/mercedes.png"),
-                ("Aston Martin", "Silverstone", "Andy Cowell", null),
-                ("Alpine", "Enstone", "Flavio Briatore", null),
-                ("Williams", "Grove", "James Vowles", null),
-                ("Racing Bulls", "Faenza", "Alan Permane", null),
-                ("Kick Sauber", "Hinwil", "Jonathan Wheatley", null),
-                ("Haas", "Kannapolis", "Ayao Komatsu", null)
+                ("Aston Martin", "Silverstone", "Andy Cowell", "/Images/Teams/astonmartin.png"),
+                ("Alpine", "Enstone", "Flavio Briatore", "/Images/Teams/alpine.png"),
+                ("Williams", "Grove", "James Vowles", "/Images/Teams/williams.png"),
+                ("Racing Bulls", "Faenza", "Alan Permane", "/Images/Teams/racingbulls.png"),
+                ("Kick Sauber", "Hinwil", "Jonathan Wheatley", "/Images/Teams/sauber.png"),
+                ("Haas", "Kannapolis", "Ayao Komatsu", "/Images/Teams/haas.png")
             };
 
             var teams = teamData.ToDictionary(t => t.Name, t => new Team
@@ -145,7 +145,6 @@ namespace F1Info_Tickets.Services.Seed
 
         private static async Task<List<DriverSeed>> SeedDriversAsync(ApplicationDbContext context, ReferenceData reference)
         {
-            var photos = new HashSet<string> { "antonelli", "hamilton", "leclerc", "norris", "piastri", "russell", "tsunoda", "verstappen" };
             var driverData = new (string First, string Last, int Number, string Country, DateTime Born, string Team, bool Reserve)[]
             {
                 ("Lando", "Norris", 4, "GBR", new DateTime(1999, 11, 13), "McLaren", false),
@@ -181,7 +180,8 @@ namespace F1Info_Tickets.Services.Seed
                 Country = reference.Countries[d.Country],
                 BirthDate = d.Born,
                 IsReserveDriver = d.Reserve,
-                PhotoUrl = photos.Contains(d.Last.ToLowerInvariant()) ? $"/Images/Drivers/{d.Last.ToLowerInvariant()}.png" : null
+                // Photo files are named after the last name without diacritics (wwwroot/Images/Drivers, credits in Images/CREDITS.md).
+                PhotoUrl = $"/Images/Drivers/{d.Last.ToLowerInvariant().Replace("ü", "u")}.png"
             }, d.Team)).ToList();
 
             context.Drivers.AddRange(drivers.Select(d => d.Driver));
