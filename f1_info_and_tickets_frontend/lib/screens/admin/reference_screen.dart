@@ -130,7 +130,7 @@ class ReferenceScreen extends StatelessWidget {
                 TableColumnDef('Name', (c) => Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600))),
                 TableColumnDef('Country', (c) => Text(c.countryName ?? '-')),
               ],
-              form: (c) => _CityForm(city: c),
+              form: (c) => CityFormDialog(city: c),
             ),
             _ReferenceTab<TrackType>(
               provider: TrackTypeProvider(),
@@ -505,16 +505,20 @@ class _CountryFormState extends State<_CountryForm> with CrudFormMixin {
   }
 }
 
-class _CityForm extends StatefulWidget {
+/// Also opened from the team form, so a team can be based in a city that is not in the database yet.
+class CityFormDialog extends StatefulWidget {
   final City? city;
 
-  const _CityForm({this.city});
+  /// Called with the saved city before the dialog closes.
+  final ValueChanged<City>? onSaved;
+
+  const CityFormDialog({super.key, this.city, this.onSaved});
 
   @override
-  State<_CityForm> createState() => _CityFormState();
+  State<CityFormDialog> createState() => _CityFormState();
 }
 
-class _CityFormState extends State<_CityForm> with CrudFormMixin {
+class _CityFormState extends State<CityFormDialog> with CrudFormMixin {
   late final _name = TextEditingController(text: widget.city?.name);
   late int? _countryId = widget.city?.countryID;
 
@@ -530,6 +534,7 @@ class _CityFormState extends State<_CityForm> with CrudFormMixin {
     final request = {'name': _name.text.trim(), 'countryID': _countryId};
     final provider = CityProvider();
     final saved = _isEdit ? await provider.update(widget.city!.cityID, request) : await provider.insert(request);
+    widget.onSaved?.call(saved);
     return _savedMessage('City', saved.label, _isEdit);
   });
 

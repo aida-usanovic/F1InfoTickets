@@ -15,6 +15,7 @@ import '../../widgets/admin/paged_table.dart';
 import '../../widgets/app_image.dart';
 import '../../widgets/feedback.dart';
 import '../../widgets/state_views.dart';
+import 'reference_screen.dart';
 
 class TeamsScreen extends StatefulWidget {
   const TeamsScreen({super.key});
@@ -104,6 +105,8 @@ class _TeamFormDialogState extends State<TeamFormDialog> with CrudFormMixin {
   late final _name = TextEditingController(text: widget.team?.teamName);
   late final _principal = TextEditingController(text: widget.team?.teamPrincipal);
   late int? _cityId = widget.team?.baseCityID;
+  // Changes after a new city is added, so the city list loads again.
+  int _citiesVersion = 0;
   String? _imagePath;
 
   bool get _isEdit => widget.team != null;
@@ -113,6 +116,21 @@ class _TeamFormDialogState extends State<TeamFormDialog> with CrudFormMixin {
     _name.dispose();
     _principal.dispose();
     super.dispose();
+  }
+
+  /// Adds a city that is not in the list yet and selects it.
+  Future<void> _addCity() async {
+    City? created;
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => CityFormDialog(onSaved: (c) => created = c),
+    );
+    final city = created;
+    if (city == null || !mounted) return;
+    setState(() {
+      _cityId = city.cityID;
+      _citiesVersion++;
+    });
   }
 
   Future<void> _save() => submit(() async {
@@ -144,15 +162,32 @@ class _TeamFormDialogState extends State<TeamFormDialog> with CrudFormMixin {
           validator: Validators.required('Team principal', maxLength: 100),
           forceErrorText: serverError('teamPrincipal'),
         ),
-        AsyncDropdown(
-          load: CityProvider().getAll,
-          label: 'Headquarters (city)',
-          initialId: _cityId,
-          idOf: (c) => c.cityID,
-          labelOf: (c) => c.label,
-          requiredMessage: "Select the city of the team's headquarters.",
-          forceErrorText: serverError('baseCityID'),
-          onChanged: (c) => _cityId = c?.cityID,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: AsyncDropdown(
+                key: ValueKey('cities-$_citiesVersion'),
+                load: CityProvider().getAll,
+                label: 'Headquarters (city)',
+                initialId: _cityId,
+                idOf: (c) => c.cityID,
+                labelOf: (c) => c.label,
+                requiredMessage: "Select the city of the team's headquarters.",
+                forceErrorText: serverError('baseCityID'),
+                onChanged: (c) => _cityId = c?.cityID,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: TextButton.icon(
+                onPressed: saving ? null : _addCity,
+                icon: const Icon(Icons.add_location_alt_outlined),
+                label: const Text('New city'),
+              ),
+            ),
+          ],
         ),
         ImagePickField(
           label: 'Team logo',
