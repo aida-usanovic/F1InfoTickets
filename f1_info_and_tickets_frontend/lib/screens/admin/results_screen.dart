@@ -171,6 +171,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
       showError(context, ApiException('Add at least one driver to the classification.'));
       return;
     }
+    // The checkbox allows only one driver; the server checks the same.
+    if (!_rows.any((r) => r.fastestLap)) {
+      showError(context, ApiException('Mark the driver who set the fastest lap.'));
+      return;
+    }
     if (_serverErrors.isNotEmpty) {
       setState(() => _serverErrors = {});
       await WidgetsBinding.instance.endOfFrame;

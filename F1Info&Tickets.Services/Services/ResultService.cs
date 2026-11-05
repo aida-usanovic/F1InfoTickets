@@ -81,7 +81,11 @@ namespace F1Info_Tickets.Services.Services
                 throw new BusinessException("The same driver was entered more than once.");
             if (!entries.Select(e => e.Position).SequenceEqual(Enumerable.Range(1, entries.Count)))
                 throw new BusinessException($"Positions must go from 1 to {entries.Count} without repeats or gaps.");
-            if (entries.Count(e => e.IsFastestLap) > 1)
+            // Exactly one driver sets the fastest lap of a race.
+            var fastestLaps = entries.Count(e => e.IsFastestLap);
+            if (fastestLaps == 0)
+                throw new BusinessException("Mark the driver who set the fastest lap.");
+            if (fastestLaps > 1)
                 throw new BusinessException("Only one driver can have the fastest lap.");
 
             // The team is the one the driver races for in this season.
